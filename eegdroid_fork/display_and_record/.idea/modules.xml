@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/Application.iml" filepath="$PROJECT_DIR$/Application.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../BluetoothLeGatt.iml" filepath="$PROJECT_DIR$/../BluetoothLeGatt.iml" />
+    </modules>
+  </component>
+</project>

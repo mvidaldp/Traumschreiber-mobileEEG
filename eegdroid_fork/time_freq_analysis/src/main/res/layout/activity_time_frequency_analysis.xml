@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.kai.eegtimefrequencyanalysis.TimeFrequencyAnalysis">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Hello World!"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</android.support.constraint.ConstraintLayout> -->
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingTop="16dp"
+    android:orientation="vertical" >
+
+    <!-- ADD A DROPDOWN TO SET ANALYSIS PROPERTIES-->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="20px">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="channel"/>
+
+        <Spinner
+            android:id="@+id/channel_dropdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="sec"/>
+
+        <Spinner
+            android:id="@+id/width_dropdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="overlap"/>
+
+        <Spinner
+            android:id="@+id/overlap_dropdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+    </LinearLayout>
+
+    <!-- ADD THE SPECTOGRAM VIEW -->
+    <!--<ImageView
+        android:id="@+id/spectogram"
+        android:layout_width="936px"
+        android:layout_height="1096px"
+        android:background="#000000"
+        android:src="@mipmap/ic_launcher" />-->
+
+    <!--<com.example.kai.eegtimefrequencyanalysis.utilities.ZoomableImageView
+        android:id="@+id/spectogram"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="20px"/>-->
+
+    <ImageView
+        android:id="@+id/spectogram"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="20px"/>
+
+</LinearLayout>

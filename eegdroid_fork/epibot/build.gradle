@@ -1,0 +1,49 @@
+apply plugin: 'com.android.application'
+apply plugin: 'jacoco-android'
+
+android {
+  compileSdkVersion 27
+
+  configurations.all {
+    resolutionStrategy.force 'com.android.support:support-annotations:24.1.1'
+  }
+
+  defaultConfig {
+    applicationId "com.ibm.watson.developer_cloud.android.myapplication"
+    testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    minSdkVersion 21
+    targetSdkVersion 27
+    versionCode 1
+    versionName "1.0"
+
+    //Enable multidex support
+    multiDexEnabled true
+  }
+  buildTypes {
+    release {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+    }
+  }
+
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  implementation fileTree(dir: 'libs', include: ['*.jar'])
+  testImplementation 'junit:junit:4.12'
+  androidTestImplementation 'com.android.support.test:runner:1.0.2'
+  androidTestImplementation 'com.android.support.test:rules:1.0.2'
+  androidTestImplementation 'com.android.support.test.espresso:espresso-intents:3.0.2'
+  androidTestImplementation ('com.android.support.test.espresso:espresso-core:3.0.2') {
+    exclude group: 'com.android.support', module: 'support-annotations'
+  }
+  implementation 'com.android.support:appcompat-v7:27.1.1'
+  implementation 'com.android.support:multidex:1.0.3'
+  implementation 'com.ibm.watson.developer_cloud:java-sdk:6.3.1'
+//  compile 'com.google.code.gson:gson:2.8.0'
+  implementation project(':library')
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+}

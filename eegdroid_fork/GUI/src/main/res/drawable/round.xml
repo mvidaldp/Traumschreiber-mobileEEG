@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--defines styling to the connect button-->
+
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient android:angle="270" />
+    <solid android:color="#000000" />
+    <corners android:radius="999dp" />
+
+</shape>

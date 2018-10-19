@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: net.ericaro:neoitertools:1.0.0@jar">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.ericaro/neoitertools/1.0.0/25fa0a0aaf12bc386ecdb19a6ee747b361c73a20/neoitertools-1.0.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/net.ericaro/neoitertools/1.0.0/eb896e55dbacc0ce95263c18440758118947c6ea/neoitertools-1.0.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
