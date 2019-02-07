@@ -1,3 +1,2 @@
 include ':display_and_record'
-include ':library'
 

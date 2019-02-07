@@ -28,18 +28,23 @@
     devices only.  If you want to make your app available to devices that don't support BLE,
     you should omit this in the manifest.  Instead, determine BLE capability by using
     PackageManager.hasSystemFeature(FEATURE_BLUETOOTH_LE) -->
-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
+
 
     <uses-permission android:name="android.permission.BLUETOOTH"/>
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
+
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <!--TODO: Ask permissions for Storage and Location-->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 
     <application android:label="@string/app_name"
-        android:icon="@drawable/ic_launcher"
-        android:theme="@android:style/Theme.Holo.Light">
-        <activity android:name=".DeviceScanActivity"
+        android:hardwareAccelerated="true"
+        android:largeHeap="true"
+        android:allowBackup="true">
+        <activity
+            android:name=".DeviceScanActivity"
             android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

@@ -10,53 +10,59 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.graphics.Color;
-import android.graphics.Typeface;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.IBinder;
+import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewStub;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.Toast;
-import android.widget.ExpandableListView;
-import android.widget.SimpleExpandableListAdapter;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
-import android.text.InputType;
+import android.widget.Toast;
 
+import com.afollestad.materialdialogs.MaterialDialog;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
-import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.LimitLine;
 import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
-
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.github.mikephil.charting.utils.ColorTemplate;
 
-import com.github.mikephil.charting.data.Entry;
-import com.github.mikephil.charting.highlight.Highlight;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
-import static org.nd4j.linalg.indexing.NDArrayIndex.interval;
-
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Date;
-import java.util.UUID;
-
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileWriter;
-import java.math.RoundingMode;
+import java.io.IOException;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.UUID;
 
-import com.afollestad.materialdialogs.MaterialDialog;
+import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 
 /**
  * For a given BLE device, this Activity provides the user interface to connect, display data,
@@ -65,63 +71,150 @@ import com.afollestad.materialdialogs.MaterialDialog;
  * Bluetooth LE API.
  */
 public class DeviceControlActivity extends Activity {
-    private final static String TAG = DeviceControlActivity.class.getSimpleName();
-
     public static final String EXTRAS_DEVICE_NAME = "DEVICE_NAME";
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
-
-    private TextView mConnectionState;
-    private TextView mDataField;
-    private String mDeviceName;
-    private String mDeviceAddress;
-    private ExpandableListView mGattServicesList;
-    private BluetoothLeService mBluetoothLeService;
-    private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics =
-            new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
-    private boolean mConnected = false;
-    private BluetoothGattCharacteristic mNotifyCharacteristic;
-
+    private final static String TAG = DeviceControlActivity.class.getSimpleName();
+    final Handler handler = new Handler();
     private final String LIST_NAME = "NAME";
     private final String LIST_UUID = "UUID";
-
-    private LineChart mChart1;
-    private LineChart mChart2;
-    private LineChart mChart3;
-    private LineChart mChart4;
-    private LineChart mChart5;
-    private LineChart mChart6;
-    private LineChart mChart7;
-    private LineChart mChart8;
-
-    private Button btn_record;
-    private boolean recording = false;
-    private INDArray main_data;
-    private String start_time;
-    private String end_time;
-    private long start_watch;
-    private String recording_time;
-    private String session_label;
-
+    double freq;
+    String key = "";
+    float res_time;
+    float res_freq;
+    List<Float> dp_received = new ArrayList<>();
+    Timer timer;
+    Timer timer2;
+    TimerTask timerTask;
+    TimerTask timerTask2;
+    TimerTask timerTask3;
+    List<ImmutablePair<Integer, Integer>> keys = new ArrayList<>();
+    List<ImmutablePair<String, Double>> notes = new ArrayList<>();
+    List<ImmutablePair<String, Double>> stimuli_data = new ArrayList<>();
+    List<Float> s_times = new ArrayList<>();
+    MediaPlayer mMediaPlayer = new MediaPlayer();
+    // constants
+    int NKEYS = 12;
+    int MINOCTAVE = 4;
+    int MAXOCTAVE = 6;
+    int STIMULUS_START = 4000;
+    int STIMULUS_LENGTH = 1000;
+    int PERIOD = 3000;  // milliseconds
+    int SILENCE_START = 5500;
+    int TUNING = 440;
+    float DATAPOINT_TIME = 4.5f / 1000;
+    int DPS_AVG_CNT = 40;
+    String TONES_PATH = Environment.getExternalStorageDirectory().getPath() + "/Tones/";
+    ArrayList<Entry> lineEntries1 = new ArrayList<Entry>();
+    int count = 0;
+    ArrayList<Entry> lineEntries2 = new ArrayList<Entry>();
+    ArrayList<Entry> lineEntries3 = new ArrayList<Entry>();
+    ArrayList<Entry> lineEntries4 = new ArrayList<Entry>();
+    ArrayList<Entry> lineEntries5 = new ArrayList<Entry>();
+    ArrayList<Entry> lineEntries6 = new ArrayList<Entry>();
+    ArrayList<Entry> lineEntries7 = new ArrayList<Entry>();
+    ArrayList<Entry> lineEntries8 = new ArrayList<Entry>();
+    int ch1_color;
+    int ch2_color;
+    int ch3_color;
+    int ch4_color;
+    int ch5_color;
+    int ch6_color;
+    int ch7_color;
+    int ch8_color;
+    boolean show_ch1 = true;
+    boolean show_ch2 = true;
+    boolean show_ch3 = true;
+    boolean show_ch4 = true;
+    boolean show_ch5 = true;
+    boolean show_ch6 = true;
+    boolean show_ch7 = true;
+    boolean show_ch8 = true;
+    private TextView mConnectionState;
+    private TextView mCh1;
+    private TextView mCh2;
+    private TextView mCh3;
+    private TextView mCh4;
+    private TextView mCh5;
+    private TextView mCh6;
+    private TextView mCh7;
+    private TextView mCh8;
+    private CheckBox chckbx_ch1;
+    private CheckBox chckbx_ch2;
+    private CheckBox chckbx_ch3;
+    private CheckBox chckbx_ch4;
+    private CheckBox chckbx_ch5;
+    private CheckBox chckbx_ch6;
+    private CheckBox chckbx_ch7;
+    private CheckBox chckbx_ch8;
+    private TextView mDataResolution;
+    private String mDeviceName;
+    private String mDeviceAddress;
+    private BluetoothLeService mBluetoothLeService;
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
-
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder service) {
             mBluetoothLeService = ((BluetoothLeService.LocalBinder) service).getService();
             if (!mBluetoothLeService.initialize()) {
                 Log.e(TAG, "Unable to initialize Bluetooth");
                 finish();
-            }
+            } else mBluetoothLeService.connect(mDeviceAddress);
             // Automatically connects to the device upon successful start-up initialization.
-            mBluetoothLeService.connect(mDeviceAddress);
         }
-
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
             mBluetoothLeService = null;
         }
     };
-
+    private boolean mConnected = false;
+    private BluetoothGattCharacteristic mNotifyCharacteristic;
+    private BluetoothGattCharacteristic mWriteCharacteristic;
+    private LineChart mChart;
+    private Button btn_record;
+    private Switch switch_plots;
+    private View layout_plots;
+    private Spinner gain_spinner;
+    private boolean recording = false;
+    private boolean plotting = false;
+    private boolean playing = false;
+    private List<float[]> main_data;
+    private float data_cnt = 0;
+    private long start_data = 0;
+    private long last_data = 0;
+    private String start_time;
+    private String end_time;
+    private long start_watch;
+    private String recording_time;
+    private String session_label;
+    private long start_timestamp;
+    private long end_timestamp;
+    private String selected_gain = "1";  // default gain
+    private View.OnClickListener btnRecordOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (!recording) {
+                notes.clear();
+                keys.clear();
+                s_times.clear();
+                keys.addAll(generateKeys());
+                notes.addAll(keysToNotes(keys));
+                askForLabel();
+            } else endTrial();
+        }
+    };
+    private CompoundButton.OnCheckedChangeListener switchPlotsOnCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            if (!isChecked) {
+                layout_plots.setVisibility(ViewStub.GONE);
+                plotting = false;
+            } else {
+                layout_plots.setVisibility(ViewStub.VISIBLE);
+                plotting = true;
+            }
+        }
+    };
+    private List<List<Float>> accumulated = new ArrayList<>();
     // Handles various events fired by the Service.
     // ACTION_GATT_CONNECTED: connected to a GATT server.
     // ACTION_GATT_DISCONNECTED: disconnected from a GATT server.
@@ -141,66 +234,281 @@ public class DeviceControlActivity extends Activity {
                 updateConnectionState(R.string.disconnected);
                 invalidateOptionsMenu();
                 clearUI();
+                switch_plots.setEnabled(false);
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
                 // Show all the supported services and characteristics on the user interface.
-                displayGattServices(mBluetoothLeService.getSupportedGattServices());
-            } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
-                displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
-                if(recording) {
-                    storeData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                if (mNotifyCharacteristic == null) {
+                    readGattCharacteristic(mBluetoothLeService.getSupportedGattServices());
                 }
+            } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
+                data_cnt++;
+                switch_plots.setEnabled(true);
+                List<Float> microV = transData(intent.getIntArrayExtra(BluetoothLeService.EXTRA_DATA));
+                displayData(microV);
+                if (plotting) plotData(microV);
+                if (recording) storeData(microV);
+                if (start_data == 0) start_data = System.currentTimeMillis();
+                last_data = System.currentTimeMillis();
+                res_time = (last_data - start_data) / data_cnt;
+                res_freq = (1 / res_time) * 1000;
+                String hertz = String.valueOf((int) res_freq) + "Hz";
+                String resolution = String.format("%.2f", res_time) + "ms - ";
+                String content = resolution + hertz;
+                mDataResolution.setText(content);
             }
         }
     };
+    private int cnt = 0;
 
-    // If a given GATT characteristic is selected, check for supported features.  This sample
-    // demonstrates 'Read' and 'Notify' features.  See
-    // http://d.android.com/reference/android/bluetooth/BluetoothGatt.html for the complete
-    // list of supported characteristic features.
-    private final ExpandableListView.OnChildClickListener servicesListClickListner =
-            new ExpandableListView.OnChildClickListener() {
-                @Override
-                public boolean onChildClick(ExpandableListView parent, View v, int groupPosition,
-                                            int childPosition, long id) {
-                    if (mGattCharacteristics != null) {
-                        final BluetoothGattCharacteristic characteristic =
-                                mGattCharacteristics.get(groupPosition).get(childPosition);
-                        final int charaProp = characteristic.getProperties();
-                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_READ) > 0) {
-                            // If there is an active notification on a characteristic, clear
-                            // it first so it doesn't update the data field on the user interface.
-                            if (mNotifyCharacteristic != null) {
-                                mBluetoothLeService.setCharacteristicNotification(
-                                        mNotifyCharacteristic, false);
-                                mNotifyCharacteristic = null;
-                            }
-                            mBluetoothLeService.readCharacteristic(characteristic);
-                        }
-                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
-                            mNotifyCharacteristic = characteristic;
-                            mBluetoothLeService.setCharacteristicNotification(
-                                    characteristic, true);
-                        }
-                        return true;
-                    }
-                    return false;
-                }
-            };
-
-    private void clearUI() {
-        mGattServicesList.setAdapter((SimpleExpandableListAdapter) null);
-        mDataField.setText(R.string.no_data);
+    private static IntentFilter makeGattUpdateIntentFilter() {
+        final IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_CONNECTED);
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_DISCONNECTED);
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED);
+        intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
+        return intentFilter;
     }
 
-    private View.OnClickListener btnRecordOnClickListener = new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            btnRecordButtonClicked();
-            if(recording) {
-                askForLabel();
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
+        if (mBluetoothLeService != null) {
+            final boolean result = mBluetoothLeService.connect(mDeviceAddress);
+            Log.d(TAG, "Connect request result=" + result);
+        }
+    }
+
+    private List<ImmutablePair<Integer, Integer>> generateKeys() {
+        List<ImmutablePair<Integer, Integer>> new_keys = new ArrayList<>();
+        for (int o = MINOCTAVE; o <= MAXOCTAVE; o++) {
+            for (int k = 0; k < NKEYS; k++) {
+                ImmutablePair<Integer, Integer> pair = new ImmutablePair<>(k, o);
+                new_keys.add(pair);
             }
         }
-    };
+        // randomize list
+        Collections.shuffle(new_keys);
+        return new_keys;
+    }
+
+    private List<ImmutablePair<String, Double>> keysToNotes(List<ImmutablePair<Integer, Integer>> keysList) {
+        char letter = ' ';
+        char accidental = ' ';
+        String note;
+        List<ImmutablePair<String, Double>> notesFreqs = new ArrayList<>();
+        for (ImmutablePair<Integer, Integer> pair : keysList) {
+            int key = pair.getKey();  // e.g note from 0 to 11
+            int octave = pair.getValue(); // e.g octave from 2 to 5
+            accidental = ' ';
+            switch (key) {
+                case 0:
+                    letter = 'C';
+                    break;
+                case 1:
+                    letter = 'C';
+                    accidental = '#';
+                    break;
+                case 2:
+                    letter = 'D';
+                    break;
+                case 3:
+                    letter = 'D';
+                    accidental = '#';
+                    break;
+                case 4:
+                    letter = 'E';
+                    break;
+                case 5:
+                    letter = 'F';
+                    break;
+                case 6:
+                    letter = 'F';
+                    accidental = '#';
+                    break;
+                case 7:
+                    letter = 'G';
+                    break;
+                case 8:
+                    letter = 'G';
+                    accidental = '#';
+                    break;
+                case 9:
+                    letter = 'A';
+                    break;
+                case 10:
+                    letter = 'A';
+                    accidental = '#';
+                    break;
+                case 11:
+                    letter = 'B';
+                    break;
+            }
+            if (accidental != ' ') note = letter + "" + accidental + "" + octave;  // e.g. C#5
+            else note = letter + "" + octave; // e.g. C5
+            NoteToFrequency mNotetoFreq = new NoteToFrequency(letter, accidental, octave, TUNING);
+            double frequency = mNotetoFreq.frequency;
+            ImmutablePair<String, Double> noteFreqPair = new ImmutablePair<>(note, frequency);
+            notesFreqs.add(noteFreqPair);
+        }
+        return notesFreqs;
+    }
+
+    public void startTimer() {
+        //set a new Timer
+        timer = new Timer();
+        //initialize the TimerTask's job
+        initializeTimerTask();
+        // schedule the timer, the stimulus presence will repeat every 3 seconds
+        timer.schedule(timerTask, STIMULUS_START, PERIOD);
+        // the silence (stop MediaPlayer) starts after 5.5 seconds, repeat every 3 seconds
+        // done this way to avoid "click" sounds at the end of the presentation
+        timer.schedule(timerTask2, SILENCE_START, PERIOD);
+    }
+
+    public void initializeTimerTask2() {
+        timerTask3 = new TimerTask() {
+            public void run() {
+                handler.post(new Runnable() {
+                    public void run() {
+                        playing = false;
+                        timer2.cancel();
+                        timer2.purge();
+                    }
+                });
+            }
+        };
+    }
+
+    public void initializeTimerTask() {
+        timerTask = new TimerTask() {
+            public void run() {
+                handler.post(new Runnable() {
+                    public void run() {
+                        if (!notes.isEmpty()) {
+                            mMediaPlayer = new MediaPlayer();
+                            ImmutablePair<String, Double> note = notes.get(0);
+                            key = note.getKey();  // same as .getLeft()
+                            freq = note.getValue();
+                            String solfa = "";
+                            switch (key.charAt(0)) {
+                                case 'A':
+                                    solfa = "La";
+                                    break;
+                                case 'B':
+                                    solfa = "Si";
+                                    break;
+                                case 'C':
+                                    solfa = "Do";
+                                    break;
+                                case 'D':
+                                    solfa = "Re";
+                                    break;
+                                case 'E':
+                                    solfa = "Mi";
+                                    break;
+                                case 'F':
+                                    solfa = "Fa";
+                                    break;
+                                case 'G':
+                                    solfa = "Sol";
+                                    break;
+                            }
+                            try {
+                                mMediaPlayer.setDataSource(TONES_PATH + key + ".wav");
+                                mMediaPlayer.prepare();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            float s_appearance = (System.currentTimeMillis() - start_watch) / 1000.0f;
+                            s_times.add(s_appearance);
+                            String key_n_freq = key + " = " + freq + "Hz";
+                            XAxis bottom = mChart.getXAxis();
+                            LimitLine ll_start = new LimitLine(s_appearance, key_n_freq);
+                            LimitLine ll_stop = new LimitLine(s_appearance + 1, "Silence");
+                            ll_start.setLineColor(Color.GREEN);
+                            ll_start.setTextColor(Color.GREEN);
+                            ll_stop.setLineColor(Color.RED);
+                            ll_stop.setTextColor(Color.RED);
+                            bottom.addLimitLine(ll_start);
+                            bottom.addLimitLine(ll_stop);
+                            mChart.notifyDataSetChanged();
+                            mMediaPlayer.start();
+                            playing = true;
+                            initializeTimerTask2();
+                            timer2 = new Timer();
+                            timer2.schedule(timerTask3, STIMULUS_LENGTH);  // run only once
+                            notes.remove(0);
+                            Toast.makeText(
+                                    getApplicationContext(),
+                                    solfa + "/" + key_n_freq,
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        } else {
+                            timer.cancel();
+                            endTrial();
+                        }
+                    }
+                });
+            }
+        };
+        timerTask2 = new TimerTask() {
+            public void run() {
+                handler.post(new Runnable() {
+                    public void run() {
+                        mMediaPlayer.release();
+                        mMediaPlayer = null;
+                    }
+                });
+            }
+        };
+    }
+
+    private void clearUI() {
+        mCh1.setText("");
+        mCh2.setText("");
+        mCh3.setText("");
+        mCh4.setText("");
+        mCh5.setText("");
+        mCh6.setText("");
+        mCh7.setText("");
+        mCh8.setText("");
+        mDataResolution.setText(R.string.no_data);
+        data_cnt = 0;
+        start_data = 0;
+    }
+
+    private void startTrial() {
+        main_data = new ArrayList<>();
+        start_time = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
+        start_watch = System.currentTimeMillis();
+        start_timestamp = new Timestamp(start_watch).getTime();
+        recording = true;
+        btn_record.setText("Stop and Store Data");
+    }
+
+    private void endTrial() {
+        timer.cancel();
+        recording = false;
+        end_time = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
+        long stop_watch = System.currentTimeMillis();
+        end_timestamp = new Timestamp(stop_watch).getTime();
+        recording_time = Long.toString(stop_watch - start_watch);
+        Toast.makeText(
+                getApplicationContext(),
+                "Saving EEG session into a file...",
+                Toast.LENGTH_LONG
+        ).show();
+        if (session_label == null) saveSession();
+        else saveSession(session_label);
+        session_label = null;
+        Toast.makeText(
+                getApplicationContext(),
+                "Your EEG session was successfully stored",
+                Toast.LENGTH_LONG
+        ).show();
+        btn_record.setText("Record");
+    }
 
     private void askForLabel() {
         new MaterialDialog.Builder(this)
@@ -208,59 +516,92 @@ public class DeviceControlActivity extends Activity {
                 .inputType(InputType.TYPE_CLASS_TEXT)
                 .input("E.g. walking, eating, sleeping, etc.",
                         "", new MaterialDialog.InputCallback() {
-                    @Override
-                    public void onInput(MaterialDialog dialog, CharSequence input) {
-                        session_label = input.toString();
-                    }
-                }).show();
+                            @Override
+                            public void onInput(MaterialDialog dialog, CharSequence input) {
+                                session_label = input.toString();
+                                // Use a new tread as this can take a while
+                                // onResume we start our timer so it can start when the app comes from the background
+                                startTrial();
+                                startTimer();
+                            }
+                        }).show();
     }
 
-    private void btnRecordButtonClicked() {
-        if(recording) {
-            recording = false;
-            end_time = new SimpleDateFormat("HH:mm:ss").format(new Date());
-            long stop_watch = System.currentTimeMillis();
-            recording_time = Long.toString(stop_watch - start_watch);
-            Toast.makeText(this, "Saving EEG session into a file...",
-                    Toast.LENGTH_LONG).show();
-            if(session_label == null) {
-                saveSession();
-            }
-            else {
-                saveSession(session_label);
-                session_label = null;
-            }
-            Toast.makeText(this, "Your EEG session was successfully stored",
-                    Toast.LENGTH_SHORT).show();
-            btn_record.setText("Record");
-        }
-        else {
-            main_data = Nd4j.zeros(1, 8);
-            start_time = new SimpleDateFormat("HH:mm:ss").format(new Date());
-            start_watch = System.currentTimeMillis();
-            recording = true;
-            btn_record.setText("Stop and Store Data");
-        }
-    }
-
-    private void storeData(String data) {
-        // Conversion formula: V_in = X*1.65V/(1000 * GAIN * 2048)
+    private List<Float> transData(int[] data) {
         // Assuming GAIN = 64
-        final float numerator = 1650000;
-        final float denominator = 1000 * 64 * 2048;
-        final String[] parts = data.split(" ");
-        final List<Float> data_microV = new ArrayList<>();
-
-        for(int i = 0; i < 8; i++) {
-            data_microV.add((Float.parseFloat(parts[i]) * numerator) / denominator);
+        // Conversion formula: V_in = X*1.65V/(1000 * GAIN * 2048)
+        // TODO: Adapt y axis on gain change
+        float gain = Float.parseFloat(selected_gain);
+        float numerator = 1650;
+        float denominator =  gain * 2048;
+        List<Float> data_trans = new ArrayList<>();
+        for (int datapoint : data) {
+            float dp = datapoint;
+            data_trans.add((dp * numerator) / denominator);
         }
+        return data_trans;
+    }
+
+    private void plotData(List<Float> current) {
+        // test 0 -> plot all values (this library and/or the smartphone can't handle it)
+//        addEntries(current);
+//         test 1 -> plot only every certain counter
+        if (cnt % 25 == 0) {
+            addEntries(current);
+        }
+        cnt++;
+        // test 2 -> plot the average of a certain number
+//        if (accumulated.size() < DPS_AVG_CNT) accumulated.add(current);
+//        else {
+//            List<Float> data_microV = new ArrayList<>();
+//            for (int j = 0; j < current.size(); j++) {
+//                float sum = 0;
+//                for (int i = 0; i < accumulated.size(); i++) sum += accumulated.get(i).get(j);
+//                float avg = sum / accumulated.size();
+//                data_microV.add(avg);
+//            }
+//            addEntries(data_microV);
+//            accumulated = new ArrayList<>();
+//            accumulated.add(current);
+//        }
+    }
+
+    private void displayData(List<Float> data_microV) {
+        if (data_microV != null) {
+            // data format example: +01012 -00234 +01374 -01516 +01656 +01747 +00131 -00351
+            String trans = "";
+            List<String> values = new ArrayList<String>();
+            for (Float value : data_microV) {
+                if (value >= 0) {
+                    trans += "+";
+                    trans += String.format("%5.2f", value);
+                } else trans += String.format("%5.2f", value);
+                values.add(trans);
+                trans = "";
+            }
+            mCh1.setText(values.get(0));
+            mCh2.setText(values.get(1));
+            mCh3.setText(values.get(2));
+            mCh4.setText(values.get(3));
+            mCh5.setText(values.get(4));
+            mCh6.setText(values.get(5));
+            mCh7.setText(values.get(6));
+            mCh8.setText(values.get(7));
+        }
+    }
+
+    private void storeData(List<Float> data_microV) {
         float[] f_microV = new float[data_microV.size()];
+        float curr_received = (System.currentTimeMillis() - start_watch) / 1000.0f;
+        dp_received.add(curr_received);
         int i = 0;
         for (Float f : data_microV) {
             f_microV[i++] = (f != null ? f : Float.NaN); // Or whatever default you want
         }
-        INDArray curr_data = Nd4j.create(f_microV);
-        main_data = Nd4j.vstack(main_data, curr_data);
+        main_data.add(f_microV);
+        ImmutablePair<String, Double> stimuli = new ImmutablePair<>(key, freq);
+        if (!playing) stimuli = new ImmutablePair<>("silence", 0.0);
+        stimuli_data.add(stimuli);
     }
 
     private void saveSession() {
@@ -269,27 +610,23 @@ public class DeviceControlActivity extends Activity {
 
     private void saveSession(String tag) {
         String top_header = "Session ID,Session Tag,Date,Shape (rows x columns)," +
-                "Duration (ms),Starting Time,Ending Time,Resolution (ms),Unit Measure";
-        String dp_header = "S1, S2, S3, S4, S5, S6, S7, S8,";
-        main_data = main_data.get(interval(1, main_data.rows()));  // Remove the first row (zeros)
+                "Duration (ms),Starting Time,Ending Time,Resolution (ms),Resolution (Hz)," +
+                "Unit Measure,Starting Timestamp,Ending Timestamp";
+        String dp_header = "Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8,Key,Freq";
         UUID id = UUID.randomUUID();
-        String date = new SimpleDateFormat("dd/MM/yyyy").format(new Date());
+        String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
         Character delimiter = ',';
         Character break_line = '\n';
         Float current;
-        DecimalFormat df = new DecimalFormat("#.###");
-        df.setRoundingMode(RoundingMode.HALF_EVEN);
         try {
             File formatted = new File(Environment.getExternalStoragePublicDirectory(
                     Environment.DIRECTORY_DOWNLOADS),
-                    date.replace('/', '-') + '_' + id + ".csv");
+                    date + ".csv");
             // if file doesn't exists, then create it
-            if (!formatted.exists()) {
-                formatted.createNewFile();
-            }
+            if (!formatted.exists()) formatted.createNewFile();
             FileWriter fileWriter = new FileWriter(formatted);
-            String rows = String.valueOf(main_data.rows());  // Also INDArray.shape()[0]
-            String cols = String.valueOf(main_data.columns());  // Also INDArray.shape()[1]
+            int rows = main_data.size();
+            int cols = main_data.get(0).length;
             fileWriter.append(top_header);
             fileWriter.append(break_line);
             fileWriter.append(id.toString());
@@ -298,7 +635,7 @@ public class DeviceControlActivity extends Activity {
             fileWriter.append(delimiter);
             fileWriter.append(date);
             fileWriter.append(delimiter);
-            fileWriter.append(rows + " x " + cols);
+            fileWriter.append(rows + "x" + cols);
             fileWriter.append(delimiter);
             fileWriter.append(recording_time);
             fileWriter.append(delimiter);
@@ -306,21 +643,37 @@ public class DeviceControlActivity extends Activity {
             fileWriter.append(delimiter);
             fileWriter.append(end_time);
             fileWriter.append(delimiter);
-            String resolution = String.valueOf(Float.parseFloat(recording_time) /
-                    Float.parseFloat(rows));
-            fileWriter.append(resolution);
+            fileWriter.append(String.valueOf(res_time));
+            fileWriter.append(delimiter);
+            fileWriter.append(String.valueOf(res_freq));
             fileWriter.append(delimiter);
             fileWriter.append("µV");
             fileWriter.append(delimiter);
+            fileWriter.append(Long.toString(start_timestamp));
+            fileWriter.append(delimiter);
+            fileWriter.append(Long.toString(end_timestamp));
+            fileWriter.append(delimiter);
+            fileWriter.append(break_line);
+            fileWriter.append("Stimuli appearance");
+            fileWriter.append(delimiter);
+            for (float time : s_times) {
+                fileWriter.append(String.valueOf(time));
+                fileWriter.append(delimiter);
+            }
             fileWriter.append(break_line);
             fileWriter.append(dp_header);
             fileWriter.append(break_line);
-            for (int i = 0; i < main_data.rows(); i++) {
-                for (int j = 0; j < main_data.columns(); j++) {
-                    current = main_data.getFloat(i, j);
-                    fileWriter.append(df.format(current));
+            for (int i = 0; i < rows; i++) {
+                fileWriter.append(String.valueOf(dp_received.get(i)));
+                fileWriter.append(delimiter);
+                for (int j = 0; j < cols; j++) {
+                    fileWriter.append(String.valueOf(main_data.get(i)[j]));
                     fileWriter.append(delimiter);
                 }
+                fileWriter.append(stimuli_data.get(i).getLeft());
+                fileWriter.append(delimiter);
+                fileWriter.append(stimuli_data.get(i).getRight().toString());
+                fileWriter.append(delimiter);
                 fileWriter.append(break_line);
             }
             fileWriter.flush();
@@ -334,9 +687,84 @@ public class DeviceControlActivity extends Activity {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.gatt_services_characteristics);
-
+        ch1_color = ContextCompat.getColor(getApplicationContext(), R.color.aqua);
+        ch2_color = ContextCompat.getColor(getApplicationContext(), R.color.fuchsia);
+        ch3_color = ContextCompat.getColor(getApplicationContext(), R.color.green);
+        ch4_color = ContextCompat.getColor(getApplicationContext(), android.R.color.holo_purple);
+        ch5_color = ContextCompat.getColor(getApplicationContext(), R.color.orange);
+        ch6_color = ContextCompat.getColor(getApplicationContext(), R.color.red);
+        ch7_color = ContextCompat.getColor(getApplicationContext(), R.color.yellow);
+        ch8_color = ContextCompat.getColor(getApplicationContext(), R.color.black);
         btn_record = (Button) findViewById(R.id.btn_record);
+        switch_plots = (Switch) findViewById(R.id.switch_plots);
+        gain_spinner = (Spinner) findViewById(R.id.gain_spinner);
+        // Create an ArrayAdapter using the string array and a default spinner layout
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.gains, android.R.layout.simple_spinner_item);
+        // Specify the layout to use when the list of choices appears
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        // Apply the adapter to the spinner
+        gain_spinner.setAdapter(adapter);
+        gain_spinner.setSelection(1);
+        gain_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                float max = 1700f;
+                switch (position) {
+                    case 0:
+                        selected_gain = "0.5";
+                        max = 2100f;
+                        break;
+                    case 1:
+                        selected_gain = "1";
+                        max = 1700f;
+                        break;
+                    case 2:
+                        selected_gain = "2";
+                        max = 850f;
+                        break;
+                    case 3:
+                        selected_gain = "4";
+                        max = 425f;
+                        break;
+                    case 4:
+                        selected_gain = "8";
+                        max = 210f;
+                        break;
+                    case 5:
+                        selected_gain = "16";
+                        max = 110f;
+                        break;
+                    case 6:
+                        selected_gain = "32";
+                        max = 60f;
+                        break;
+                    case 7:
+                        selected_gain = "64";
+                        max = 30f;
+                        break;
+                    default:
+                        selected_gain = "1";
+                        max = 2100f;
+                }
+                if (mBluetoothLeService != null) {
+                    writeGattCharacteristic(mBluetoothLeService.getSupportedGattServices());
+                }
+                YAxis leftAxis = mChart.getAxisLeft();
+                leftAxis.setAxisMaximum(max);
+                leftAxis.setAxisMinimum(-max);
+                leftAxis.setLabelCount(13, false);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // sometimes you need nothing here
+            }
+        });
+        layout_plots = findViewById(R.id.linearLayout_chart);
+        layout_plots.setVisibility(ViewStub.GONE);
         btn_record.setOnClickListener(btnRecordOnClickListener);
+        switch_plots.setOnCheckedChangeListener(switchPlotsOnCheckedChangeListener);
 
         final Intent intent = getIntent();
         mDeviceName = intent.getStringExtra(EXTRAS_DEVICE_NAME);
@@ -344,676 +772,290 @@ public class DeviceControlActivity extends Activity {
 
         // Sets up UI references.
         ((TextView) findViewById(R.id.device_address)).setText(mDeviceAddress);
-        mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
-        mGattServicesList.setOnChildClickListener(servicesListClickListner);
         mConnectionState = (TextView) findViewById(R.id.connection_state);
-        mDataField = (TextView) findViewById(R.id.data_value);
-//        TextView tv = (TextView) findViewById(R.id.data_value);
-//        String eeg_data = new String((String) tv.getText());
-////        Log.d(TAG, String.format("Values: " + eeg_data));
-        getActionBar().setTitle(mDeviceName);
-        getActionBar().setDisplayHomeAsUpEnabled(true);
+        mCh1 = (TextView) findViewById(R.id.ch1);
+        mCh2 = (TextView) findViewById(R.id.ch2);
+        mCh3 = (TextView) findViewById(R.id.ch3);
+        mCh4 = (TextView) findViewById(R.id.ch4);
+        mCh5 = (TextView) findViewById(R.id.ch5);
+        mCh6 = (TextView) findViewById(R.id.ch6);
+        mCh7 = (TextView) findViewById(R.id.ch7);
+        mCh8 = (TextView) findViewById(R.id.ch8);
+        mCh1.setTextColor(ch1_color);
+        mCh2.setTextColor(ch2_color);
+        mCh3.setTextColor(ch3_color);
+        mCh4.setTextColor(ch4_color);
+        mCh5.setTextColor(ch5_color);
+        mCh6.setTextColor(ch6_color);
+        mCh7.setTextColor(ch7_color);
+        mCh8.setTextColor(ch8_color);
+        chckbx_ch1 = (CheckBox) findViewById(R.id.checkBox_ch1);
+        chckbx_ch2 = (CheckBox) findViewById(R.id.checkBox_ch2);
+        chckbx_ch3 = (CheckBox) findViewById(R.id.checkBox_ch3);
+        chckbx_ch4 = (CheckBox) findViewById(R.id.checkBox_ch4);
+        chckbx_ch5 = (CheckBox) findViewById(R.id.checkBox_ch5);
+        chckbx_ch6 = (CheckBox) findViewById(R.id.checkBox_ch6);
+        chckbx_ch7 = (CheckBox) findViewById(R.id.checkBox_ch7);
+        chckbx_ch8 = (CheckBox) findViewById(R.id.checkBox_ch8);
+        chckbx_ch1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) show_ch1 = true;
+                else show_ch1 = false;
+            }
+        });
+        chckbx_ch2.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) show_ch2 = true;
+                else show_ch2 = false;
+            }
+        });
+        chckbx_ch3.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) show_ch3 = true;
+                else show_ch3 = false;
+            }
+        });
+        chckbx_ch4.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) show_ch4 = true;
+                else show_ch4 = false;
+            }
+        });
+        chckbx_ch5.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) show_ch5 = true;
+                else show_ch5 = false;
+            }
+        });
+        chckbx_ch6.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) show_ch6 = true;
+                else show_ch6 = false;
+            }
+        });
+        chckbx_ch7.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) show_ch7 = true;
+                else show_ch7 = false;
+            }
+        });
+        chckbx_ch8.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) show_ch8 = true;
+                else show_ch8 = false;
+            }
+        });
+        mDataResolution = (TextView) findViewById(R.id.resolution_value);
+        getActionBar().setDisplayHomeAsUpEnabled(false);
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
         bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
+        setChart();
+    }
 
-        OnChartValueSelectedListener ol = new OnChartValueSelectedListener(){
-
+    void setChart() {
+        OnChartValueSelectedListener ol = new OnChartValueSelectedListener() {
             @Override
             public void onValueSelected(Entry entry, Highlight h) {
                 //entry.getData() returns null here
             }
-
             @Override
             public void onNothingSelected() {
 
             }
         };
-
-        mChart1 = (LineChart) findViewById(R.id.chart1);
-        mChart1.setOnChartValueSelectedListener(ol);
-
-        mChart2 = (LineChart) findViewById(R.id.chart2);
-        mChart2.setOnChartValueSelectedListener(ol);
-
-        mChart3 = (LineChart) findViewById(R.id.chart3);
-        mChart3.setOnChartValueSelectedListener(ol);
-
-        mChart4 = (LineChart) findViewById(R.id.chart4);
-        mChart4.setOnChartValueSelectedListener(ol);
-
-        mChart5 = (LineChart) findViewById(R.id.chart5);
-        mChart5.setOnChartValueSelectedListener(ol);
-
-        mChart6 = (LineChart) findViewById(R.id.chart6);
-        mChart6.setOnChartValueSelectedListener(ol);
-
-        mChart7 = (LineChart) findViewById(R.id.chart7);
-        mChart7.setOnChartValueSelectedListener(ol);
-
-        mChart8 = (LineChart) findViewById(R.id.chart8);
-        mChart8.setOnChartValueSelectedListener(ol);
-
+        mChart = (LineChart) findViewById(R.id.layout_chart);
+        mChart.setOnChartValueSelectedListener(ol);
         // enable description text
-        mChart1.getDescription().setEnabled(false);
-        mChart2.getDescription().setEnabled(false);
-        mChart3.getDescription().setEnabled(false);
-        mChart4.getDescription().setEnabled(false);
-        mChart5.getDescription().setEnabled(false);
-        mChart6.getDescription().setEnabled(false);
-        mChart7.getDescription().setEnabled(false);
-        mChart8.getDescription().setEnabled(false);
-
+        mChart.getDescription().setEnabled(false);
         // enable touch gestures
-        mChart1.setTouchEnabled(true);
-        mChart2.setTouchEnabled(true);
-        mChart3.setTouchEnabled(true);
-        mChart4.setTouchEnabled(true);
-        mChart5.setTouchEnabled(true);
-        mChart6.setTouchEnabled(true);
-        mChart7.setTouchEnabled(true);
-        mChart8.setTouchEnabled(true);
-
+        mChart.setTouchEnabled(true);
         // enable scaling and dragging
-        mChart1.setDragEnabled(true);
-        mChart1.setScaleEnabled(true);
-        mChart1.setDrawGridBackground(false);
-
-        mChart2.setDragEnabled(true);
-        mChart2.setScaleEnabled(true);
-        mChart2.setDrawGridBackground(false);
-
-        mChart3.setDragEnabled(true);
-        mChart3.setScaleEnabled(true);
-        mChart3.setDrawGridBackground(false);
-
-        mChart4.setDragEnabled(true);
-        mChart4.setScaleEnabled(true);
-        mChart4.setDrawGridBackground(false);
-
-        mChart5.setDragEnabled(true);
-        mChart5.setScaleEnabled(true);
-        mChart5.setDrawGridBackground(false);
-
-        mChart6.setDragEnabled(true);
-        mChart6.setScaleEnabled(true);
-        mChart6.setDrawGridBackground(false);
-
-        mChart7.setDragEnabled(true);
-        mChart7.setScaleEnabled(true);
-        mChart7.setDrawGridBackground(false);
-
-        mChart8.setDragEnabled(true);
-        mChart8.setScaleEnabled(true);
-        mChart8.setDrawGridBackground(false);
-
+        mChart.setDragEnabled(true);
+        mChart.setScaleEnabled(true);
+        mChart.setDrawGridBackground(true);
         // if disabled, scaling can be done on x- and y-axis separately
-        mChart1.setPinchZoom(true);
-        mChart2.setPinchZoom(true);
-        mChart3.setPinchZoom(true);
-        mChart4.setPinchZoom(true);
-        mChart5.setPinchZoom(true);
-        mChart6.setPinchZoom(true);
-        mChart7.setPinchZoom(true);
-        mChart8.setPinchZoom(true);
-
+        mChart.setPinchZoom(true);
         // set an alternative background color
-        mChart1.setBackgroundColor(Color.LTGRAY);
-        mChart2.setBackgroundColor(Color.LTGRAY);
-        mChart3.setBackgroundColor(Color.LTGRAY);
-        mChart4.setBackgroundColor(Color.LTGRAY);
-        mChart5.setBackgroundColor(Color.LTGRAY);
-        mChart6.setBackgroundColor(Color.LTGRAY);
-        mChart7.setBackgroundColor(Color.LTGRAY);
-        mChart8.setBackgroundColor(Color.LTGRAY);
-
         LineData data = new LineData();
-        data.setValueTextColor(Color.WHITE);
-
+        data.setValueTextColor(Color.BLACK);
         // add empty data
-        mChart1.setData(data);
-        mChart2.setData(data);
-        mChart3.setData(data);
-        mChart4.setData(data);
-        mChart5.setData(data);
-        mChart6.setData(data);
-        mChart7.setData(data);
-        mChart8.setData(data);
-
+        mChart.setData(data);
         // get the legend (only possible after setting data)
-        Legend l1 = mChart1.getLegend();
-        Legend l2 = mChart2.getLegend();
-        Legend l3 = mChart3.getLegend();
-        Legend l4 = mChart4.getLegend();
-        Legend l5 = mChart5.getLegend();
-        Legend l6 = mChart6.getLegend();
-        Legend l7 = mChart7.getLegend();
-        Legend l8 = mChart8.getLegend();
-
-        Typeface mTfLight = Typeface.createFromAsset(getAssets(), "OpenSans-Light.ttf");
-
+        Legend l1 = mChart.getLegend();
         // modify the legend ...
         l1.setForm(Legend.LegendForm.LINE);
-        l1.setTypeface(mTfLight);
-        l1.setTextColor(Color.WHITE);
-
-        l2.setForm(Legend.LegendForm.LINE);
-        l2.setTypeface(mTfLight);
-        l2.setTextColor(Color.WHITE);
-
-        l3.setForm(Legend.LegendForm.LINE);
-        l3.setTypeface(mTfLight);
-        l3.setTextColor(Color.WHITE);
-
-        l4.setForm(Legend.LegendForm.LINE);
-        l4.setTypeface(mTfLight);
-        l4.setTextColor(Color.WHITE);
-
-        l5.setForm(Legend.LegendForm.LINE);
-        l5.setTypeface(mTfLight);
-        l5.setTextColor(Color.WHITE);
-
-        l6.setForm(Legend.LegendForm.LINE);
-        l6.setTypeface(mTfLight);
-        l6.setTextColor(Color.WHITE);
-
-        l7.setForm(Legend.LegendForm.LINE);
-        l7.setTypeface(mTfLight);
-        l7.setTextColor(Color.WHITE);
-
-        l8.setForm(Legend.LegendForm.LINE);
-        l8.setTypeface(mTfLight);
-        l8.setTextColor(Color.WHITE);
-
-        XAxis xl1 = mChart1.getXAxis();
-        xl1.setTypeface(mTfLight);
-        xl1.setTextColor(Color.WHITE);
-        xl1.setDrawGridLines(false);
-        xl1.setAvoidFirstLastClipping(true);
-        xl1.setEnabled(false);
-
-        XAxis xl2 = mChart2.getXAxis();
-        xl2.setTypeface(mTfLight);
-        xl2.setTextColor(Color.WHITE);
-        xl2.setDrawGridLines(false);
-        xl2.setAvoidFirstLastClipping(true);
-        xl2.setEnabled(false);
-
-        XAxis xl3 = mChart3.getXAxis();
-        xl3.setTypeface(mTfLight);
-        xl3.setTextColor(Color.WHITE);
-        xl3.setDrawGridLines(false);
-        xl3.setAvoidFirstLastClipping(true);
-        xl3.setEnabled(false);
-
-        XAxis xl4 = mChart4.getXAxis();
-        xl4.setTypeface(mTfLight);
-        xl4.setTextColor(Color.WHITE);
-        xl4.setDrawGridLines(false);
-        xl4.setAvoidFirstLastClipping(true);
-        xl4.setEnabled(false);
-
-        XAxis xl5 = mChart5.getXAxis();
-        xl5.setTypeface(mTfLight);
-        xl5.setTextColor(Color.WHITE);
-        xl5.setDrawGridLines(false);
-        xl5.setAvoidFirstLastClipping(true);
-        xl5.setEnabled(false);
-
-        XAxis xl6 = mChart6.getXAxis();
-        xl6.setTypeface(mTfLight);
-        xl6.setTextColor(Color.WHITE);
-        xl6.setDrawGridLines(false);
-        xl6.setAvoidFirstLastClipping(true);
-        xl6.setEnabled(false);
-
-        XAxis xl7 = mChart7.getXAxis();
-        xl7.setTypeface(mTfLight);
-        xl7.setTextColor(Color.WHITE);
-        xl7.setDrawGridLines(false);
-        xl7.setAvoidFirstLastClipping(true);
-        xl7.setEnabled(false);
-
-        XAxis xl8 = mChart8.getXAxis();
-        xl8.setTypeface(mTfLight);
-        xl8.setTextColor(Color.WHITE);
-        xl8.setDrawGridLines(false);
-        xl8.setAvoidFirstLastClipping(true);
-        xl8.setEnabled(false);
-
-        YAxis leftAxis1 = mChart1.getAxisLeft();
-        leftAxis1.setTypeface(mTfLight);
-        leftAxis1.setTextColor(Color.WHITE);
-        leftAxis1.setAxisMaximum(35f);
-        leftAxis1.setAxisMinimum(-35f);
-        leftAxis1.setLabelCount(3, true);
-        leftAxis1.setDrawGridLines(true);
-
-        YAxis leftAxis2 = mChart2.getAxisLeft();
-        leftAxis2.setTypeface(mTfLight);
-        leftAxis2.setTextColor(Color.WHITE);
-        leftAxis2.setAxisMaximum(35f);
-        leftAxis2.setAxisMinimum(-35f);
-        leftAxis2.setLabelCount(3, true);
-        leftAxis2.setDrawGridLines(true);
-
-        YAxis leftAxis3 = mChart3.getAxisLeft();
-        leftAxis3.setTypeface(mTfLight);
-        leftAxis3.setTextColor(Color.WHITE);
-        leftAxis3.setAxisMaximum(35f);
-        leftAxis3.setAxisMinimum(-35f);
-        leftAxis3.setLabelCount(3, true);
-        leftAxis3.setDrawGridLines(true);
-
-        YAxis leftAxis4 = mChart4.getAxisLeft();
-        leftAxis4.setTypeface(mTfLight);
-        leftAxis4.setTextColor(Color.WHITE);
-        leftAxis4.setAxisMaximum(35f);
-        leftAxis4.setAxisMinimum(-35f);
-        leftAxis4.setLabelCount(3, true);
-        leftAxis4.setDrawGridLines(true);
-
-        YAxis leftAxis5 = mChart5.getAxisLeft();
-        leftAxis5.setTypeface(mTfLight);
-        leftAxis5.setTextColor(Color.WHITE);
-        leftAxis5.setAxisMaximum(35f);
-        leftAxis5.setAxisMinimum(-35f);
-        leftAxis5.setLabelCount(3, true);
-        leftAxis5.setDrawGridLines(true);
-
-        YAxis leftAxis6 = mChart6.getAxisLeft();
-        leftAxis6.setTypeface(mTfLight);
-        leftAxis6.setTextColor(Color.WHITE);
-        leftAxis6.setAxisMaximum(35f);
-        leftAxis6.setAxisMinimum(-35f);
-        leftAxis6.setLabelCount(3, true);
-        leftAxis6.setDrawGridLines(true);
-
-        YAxis leftAxis7 = mChart7.getAxisLeft();
-        leftAxis7.setTypeface(mTfLight);
-        leftAxis7.setTextColor(Color.WHITE);
-        leftAxis7.setAxisMaximum(35f);
-        leftAxis7.setAxisMinimum(-35f);
-        leftAxis7.setLabelCount(3, true);
-        leftAxis7.setDrawGridLines(true);
-
-        YAxis leftAxis8 = mChart8.getAxisLeft();
-        leftAxis8.setTypeface(mTfLight);
-        leftAxis8.setTextColor(Color.WHITE);
-        leftAxis8.setAxisMaximum(35f);
-        leftAxis8.setAxisMinimum(-35f);
-        leftAxis8.setLabelCount(3, true);
-        //leftAxis8.setGranularityEnabled(true);
-        leftAxis8.setDrawGridLines(true);
-
-        YAxis rightAxis1 = mChart1.getAxisRight();
-        rightAxis1.setEnabled(false);
-
-        YAxis rightAxis2 = mChart2.getAxisRight();
-        rightAxis2.setEnabled(false);
-
-        YAxis rightAxis3 = mChart3.getAxisRight();
-        rightAxis3.setEnabled(false);
-
-        YAxis rightAxis4 = mChart4.getAxisRight();
-        rightAxis4.setEnabled(false);
-
-        YAxis rightAxis5 = mChart5.getAxisRight();
-        rightAxis5.setEnabled(false);
-
-        YAxis rightAxis6 = mChart6.getAxisRight();
-        rightAxis6.setEnabled(false);
-
-        YAxis rightAxis7 = mChart7.getAxisRight();
-        rightAxis7.setEnabled(false);
-
-        YAxis rightAxis8 = mChart8.getAxisRight();
-        rightAxis8.setEnabled(false);
-
-
+        l1.setTextColor(Color.BLACK);
+        // set the y left axis
+        YAxis leftAxis = mChart.getAxisLeft();
+        leftAxis.setTextColor(Color.GRAY);
+        leftAxis.setAxisMaximum(30f);
+        leftAxis.setAxisMinimum(-30f);
+        leftAxis.setLabelCount(13, true); // from -35 to 35, a label each 5 microV
+        leftAxis.setDrawGridLines(true);
+        leftAxis.setGridColor(Color.WHITE);
+        // TODO: Make stimuli start and stop vertical lines appear in real-time
+        // TODO: Block the last checkbox to prevent empty plot and app forceclose
+        // disable the y right axis
+        YAxis rightAxis = mChart.getAxisRight();
+        rightAxis.setEnabled(false);
+        // set the x bottom axis
+        XAxis bottomAxis = mChart.getXAxis();
+        bottomAxis.setLabelCount(10, true);
+        bottomAxis.setPosition(XAxis.XAxisPosition.TOP);
+        bottomAxis.setGridColor(Color.WHITE);
+        bottomAxis.setTextColor(Color.GRAY);
     }
 
-    ArrayList<Entry> lineEntries = new ArrayList<Entry>();
-    int count = 0;
-
-    public void addEntry(float f) {
-
-        lineEntries.add(new Entry(count,f));
-
-        count = count+1;
-
-        LineDataSet set1 = createSet(lineEntries);
-        //new LineDataSet(lineEntries,"legend");
-
-        LineData data1 = new LineData(set1);
-
-        data1.notifyDataChanged();
-        mChart1.setData(data1);
-
-        mChart1.notifyDataSetChanged();
-
+    public void addEntries(List<Float> f) {
+        List<ILineDataSet> datasets = new ArrayList<>(); // for adding multiple plots
+        float x = count * DATAPOINT_TIME * DPS_AVG_CNT;
+        if (show_ch1) {
+            lineEntries1.add(new Entry(x, f.get(0)));
+            LineDataSet set1 = createSet1(lineEntries1);
+            datasets.add(set1);
+        }
+        if (show_ch2) {
+            lineEntries2.add(new Entry(x, f.get(1)));
+            LineDataSet set2 = createSet2(lineEntries2);
+            datasets.add(set2);
+        }
+        if (show_ch3) {
+            lineEntries3.add(new Entry(x, f.get(2)));
+            LineDataSet set3 = createSet3(lineEntries3);
+            datasets.add(set3);
+        }
+        if (show_ch4) {
+            lineEntries4.add(new Entry(x, f.get(3)));
+            LineDataSet set4 = createSet4(lineEntries4);
+            datasets.add(set4);
+        }
+        if (show_ch5) {
+            lineEntries5.add(new Entry(x, f.get(4)));
+            LineDataSet set5 = createSet5(lineEntries5);
+            datasets.add(set5);
+        }
+        if (show_ch6) {
+            lineEntries6.add(new Entry(x, f.get(5)));
+            LineDataSet set6 = createSet6(lineEntries6);
+            datasets.add(set6);
+        }
+        if (show_ch7) {
+            lineEntries7.add(new Entry(x, f.get(6)));
+            LineDataSet set7 = createSet7(lineEntries7);
+            datasets.add(set7);
+        }
+        if (show_ch8) {
+            lineEntries8.add(new Entry(x, f.get(7)));
+            LineDataSet set8 = createSet8(lineEntries8);
+            datasets.add(set8);
+        }
+        count++;
+        LineData linedata = new LineData(datasets);
+        linedata.notifyDataChanged();
+        mChart.setData(linedata);
+        mChart.notifyDataSetChanged();
         // limit the number of visible entries
-        mChart1.setVisibleXRangeMaximum(20);
-
+        mChart.setVisibleXRangeMaximum(2);  // in this case you always see 2 seconds
         // move to the latest entry
-        mChart1.moveViewToX(data1.getEntryCount());
-        
+        mChart.moveViewToX(linedata.getEntryCount());
     }
 
-    ArrayList<Entry> lineEntries2 = new ArrayList<Entry>();
-    int count2 = 0;
 
-    public void addEntry2(float f) {
-
-        lineEntries2.add(new Entry(count2,f));
-
-        count2 = count2+1;
-
-        LineDataSet set2 = createSet2(lineEntries2);
-        //new LineDataSet(lineEntries2,"legend");
-
-        LineData data2 = new LineData(set2);
-
-        data2.notifyDataChanged();
-        mChart2.setData(data2);
-
-        mChart2.notifyDataSetChanged();
-
-        // limit the number of visible entries
-        mChart2.setVisibleXRangeMaximum(20);
-
-        // move to the latest entry
-        mChart2.moveViewToX(data2.getEntryCount());
-
-    }
-
-    ArrayList<Entry> lineEntries3 = new ArrayList<Entry>();
-    int count3 = 0;
-
-    public void addEntry3(float f) {
-
-        lineEntries3.add(new Entry(count3,f));
-
-        count3 = count3+1;
-
-        LineDataSet set3 = createSet3(lineEntries3);
-
-        LineData data3 = new LineData(set3);
-
-        data3.notifyDataChanged();
-        mChart3.setData(data3);
-
-        mChart3.notifyDataSetChanged();
-
-        // limit the number of visible entries
-        mChart3.setVisibleXRangeMaximum(20);
-
-        // move to the latest entry
-        mChart3.moveViewToX(data3.getEntryCount());
-    }
-
-    ArrayList<Entry> lineEntries4 = new ArrayList<Entry>();
-    int count4 = 0;
-
-    public void addEntry4(float f) {
-
-        lineEntries4.add(new Entry(count4,f));
-
-        count4 = count4+1;
-
-        LineDataSet set4 = createSet4(lineEntries4);
-
-        LineData data4 = new LineData(set4);
-
-        data4.notifyDataChanged();
-        mChart4.setData(data4);
-
-        mChart4.notifyDataSetChanged();
-
-        // limit the number of visible entries
-        mChart4.setVisibleXRangeMaximum(20);
-
-        // move to the latest entry
-        mChart4.moveViewToX(data4.getEntryCount());
-    }
-
-    ArrayList<Entry> lineEntries5 = new ArrayList<Entry>();
-    int count5 = 0;
-
-    public void addEntry5(float f) {
-
-        lineEntries5.add(new Entry(count5,f));
-
-        count5 = count5+1;
-
-        LineDataSet set5 = createSet5(lineEntries5);
-
-        LineData data5 = new LineData(set5);
-
-        data5.notifyDataChanged();
-        mChart5.setData(data5);
-
-        mChart5.notifyDataSetChanged();
-
-        // limit the number of visible entries
-        mChart5.setVisibleXRangeMaximum(20);
-
-        // move to the latest entry
-        mChart5.moveViewToX(data5.getEntryCount());
-    }
-
-    ArrayList<Entry> lineEntries6 = new ArrayList<Entry>();
-    int count6 = 0;
-
-    public void addEntry6(float f) {
-
-        lineEntries6.add(new Entry(count6,f));
-
-        count6 = count6+1;
-
-        LineDataSet set6 = createSet6(lineEntries6);
-
-        LineData data6 = new LineData(set6);
-
-        data6.notifyDataChanged();
-        mChart6.setData(data6);
-
-        mChart6.notifyDataSetChanged();
-
-        // limit the number of visible entries
-        mChart6.setVisibleXRangeMaximum(20);
-
-        // move to the latest entry
-        mChart6.moveViewToX(data6.getEntryCount());
-    }
-
-    ArrayList<Entry> lineEntries7 = new ArrayList<Entry>();
-    int count7 = 0;
-
-    public void addEntry7(float f) {
-
-        lineEntries7.add(new Entry(count7,f));
-
-        count7 = count7+1;
-
-        LineDataSet set7 = createSet7(lineEntries7);
-
-        LineData data7 = new LineData(set7);
-
-        data7.notifyDataChanged();
-        mChart7.setData(data7);
-
-        mChart7.notifyDataSetChanged();
-
-        // limit the number of visible entries
-        mChart7.setVisibleXRangeMaximum(20);
-
-        // move to the latest entry
-        mChart7.moveViewToX(data7.getEntryCount());
-    }
-
-    ArrayList<Entry> lineEntries8 = new ArrayList<Entry>();
-    int count8 = 0;
-
-    public void addEntry8(float f) {
-
-        lineEntries8.add(new Entry(count8,f));
-
-        count8 = count8+1;
-
-        LineDataSet set8 = createSet8(lineEntries8);
-
-        LineData data8 = new LineData(set8);
-
-        data8.notifyDataChanged();
-        mChart8.setData(data8);
-
-        mChart8.notifyDataSetChanged();
-
-        // limit the number of visible entries
-        mChart8.setVisibleXRangeMaximum(20);
-
-        // move to the latest entry
-        mChart8.moveViewToX(data8.getEntryCount());
-    }
-
-    private LineDataSet createSet(ArrayList<Entry> le) {
-
-        LineDataSet set1 = new LineDataSet(le, "S1");
+    private LineDataSet createSet1(ArrayList<Entry> le) {
+        LineDataSet set1 = new LineDataSet(le, "Ch-1");
         set1.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set1.setColor(Color.rgb(255,165,0));  // Orange color
+        set1.setColor(ch1_color);
         set1.setCircleColor(Color.WHITE);
         set1.setLineWidth(1f);
         set1.setCircleRadius(1f);
         set1.setFillAlpha(65);
         set1.setFillColor(ColorTemplate.getHoloBlue());
-        //set1.setHighLightColor(Color.rgb(244, 117, 117));
-        set1.setValueTextColor(Color.WHITE);
-        //set1.setValueTextSize(0.1f);
-        //set1.setDrawValues(false);
+        set1.setValueTextColor(ch1_color);
         return set1;
     }
 
     private LineDataSet createSet2(ArrayList<Entry> le) {
-
-        LineDataSet set2 = new LineDataSet(le, "S2");
+        LineDataSet set2 = new LineDataSet(le, "Ch-2");
         set2.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set2.setColor(Color.GREEN);
+        set2.setColor(ch2_color);
         set2.setCircleColor(Color.WHITE);
         set2.setLineWidth(1f);
         set2.setCircleRadius(1f);
         set2.setFillAlpha(65);
-        //set.setHighLightColor(Color.rgb(44, 117, 117));
-        set2.setValueTextColor(Color.WHITE);
-        //set2.setValueTextSize(0.1f);
-        //set2.setDrawValues(false);
+        set2.setValueTextColor(ch2_color);
         return set2;
     }
 
     private LineDataSet createSet3(ArrayList<Entry> le) {
-
-        LineDataSet set3 = new LineDataSet(le, "S3");
+        LineDataSet set3 = new LineDataSet(le, "Ch-3");
         set3.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set3.setColor(Color.CYAN);
+        set3.setColor(ch3_color);
         set3.setCircleColor(Color.WHITE);
         set3.setLineWidth(1f);
         set3.setCircleRadius(1f);
         set3.setFillAlpha(65);
-        //set.setHighLightColor(Color.rgb(44, 117, 117));
-        set3.setValueTextColor(Color.WHITE);
-        //set3.setValueTextSize(0.1f);
-        //set3.setDrawValues(false);
+        set3.setValueTextColor(ch3_color);
         return set3;
     }
 
     private LineDataSet createSet4(ArrayList<Entry> le) {
-
-        LineDataSet set4 = new LineDataSet(le, "S4");
+        LineDataSet set4 = new LineDataSet(le, "Ch-4");
         set4.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set4.setColor(Color.MAGENTA);
+        set4.setColor(ch4_color);
         set4.setCircleColor(Color.WHITE);
         set4.setLineWidth(1f);
         set4.setCircleRadius(1f);
         set4.setFillAlpha(65);
-        //set.setHighLightColor(Color.rgb(44, 117, 117));
-        set4.setValueTextColor(Color.WHITE);
-        //set4.setValueTextSize(0.1f);
-        //set4.setDrawValues(false);
+        set4.setValueTextColor(ch4_color);
         return set4;
     }
 
     private LineDataSet createSet5(ArrayList<Entry> le) {
-
-        LineDataSet set5 = new LineDataSet(le, "S5");
+        LineDataSet set5 = new LineDataSet(le, "Ch-5");
         set5.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set5.setColor(Color.rgb(139,69,19));  // Brown color
+        set5.setColor(ch5_color);
         set5.setCircleColor(Color.WHITE);
         set5.setLineWidth(1f);
         set5.setCircleRadius(1f);
         set5.setFillAlpha(65);
-        //set.setHighLightColor(Color.rgb(44, 117, 117));
-        set5.setValueTextColor(Color.WHITE);
-        //set5.setValueTextSize(0.1f);
-        //set5.setDrawValues(false);
+        set5.setValueTextColor(ch5_color);
         return set5;
     }
 
     private LineDataSet createSet6(ArrayList<Entry> le) {
-
-        LineDataSet set6 = new LineDataSet(le, "S6");
+        LineDataSet set6 = new LineDataSet(le, "Ch-6");
         set6.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set6.setColor(Color.BLACK);
+        set6.setColor(ch6_color);
         set6.setCircleColor(Color.WHITE);
         set6.setLineWidth(1f);
         set6.setCircleRadius(1f);
         set6.setFillAlpha(65);
-        //set.setHighLightColor(Color.rgb(44, 117, 117));
-        set6.setValueTextColor(Color.WHITE);
-        //set6.setValueTextSize(0.1f);
-        //set6.setDrawValues(false);
+        set6.setValueTextColor(ch6_color);
         return set6;
     }
 
     private LineDataSet createSet7(ArrayList<Entry> le) {
-
-        LineDataSet set7 = new LineDataSet(le, "S7");
+        LineDataSet set7 = new LineDataSet(le, "Ch-7");
         set7.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set7.setColor(Color.YELLOW);
+        set7.setColor(ch7_color);
         set7.setCircleColor(Color.WHITE);
         set7.setLineWidth(1f);
         set7.setCircleRadius(1f);
         set7.setFillAlpha(65);
-        //set.setHighLightColor(Color.rgb(44, 117, 117));
-        set7.setValueTextColor(Color.WHITE);
-        //set7.setValueTextSize(0.1f);
-        //set7.setDrawValues(false);
+        set7.setValueTextColor(ch7_color);
         return set7;
     }
 
     private LineDataSet createSet8(ArrayList<Entry> le) {
-
-        LineDataSet set8 = new LineDataSet(le, "S8");
+        LineDataSet set8 = new LineDataSet(le, "Ch-8");
         set8.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set8.setColor(Color.RED);
+        set8.setColor(ch8_color);
         set8.setCircleColor(Color.WHITE);
         set8.setLineWidth(1f);
         set8.setCircleRadius(1f);
         set8.setFillAlpha(65);
-        //set.setHighLightColor(Color.rgb(44, 117, 117));
-        set8.setValueTextColor(Color.WHITE);
-        //set8.setValueTextSize(0.1f);
-        //set8.setDrawValues(false);
+        set8.setValueTextColor(ch8_color);
         return set8;
-    }
-
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
-        if (mBluetoothLeService != null) {
-            final boolean result = mBluetoothLeService.connect(mDeviceAddress);
-            Log.d(TAG, "Connect request result=" + result);
-        }
     }
 
     @Override
@@ -1044,7 +1086,7 @@ public class DeviceControlActivity extends Activity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch(item.getItemId()) {
+        switch (item.getItemId()) {
             case R.id.menu_connect:
                 mBluetoothLeService.connect(mDeviceAddress);
                 return true;
@@ -1067,153 +1109,116 @@ public class DeviceControlActivity extends Activity {
         });
     }
 
-    private int cnt = 0;
-    private void displayData(String data) {
-        cnt += 1;
-        // Conversion formula: V_in = X*1.65V/(1000 * GAIN * 2048)
-        // Assuming GAIN = 64
-        if (cnt % 10 == 0) {
-            final float numerator = 1650000;
-            final float denominator = 1000 * 64 * 2048;
-            final String[] parts = data.split(" ");
-            final List<Float> data_raw = new ArrayList<>();
-
-
-
-            addEntry((Float.parseFloat(parts[0]) * numerator ) / denominator);
-            addEntry2((Float.parseFloat(parts[1]) * numerator ) / denominator);
-            addEntry3((Float.parseFloat(parts[2]) * numerator ) / denominator);
-            addEntry4((Float.parseFloat(parts[3]) * numerator ) / denominator);
-            addEntry5((Float.parseFloat(parts[4]) * numerator ) / denominator);
-            addEntry6((Float.parseFloat(parts[5]) * numerator ) / denominator);
-            addEntry7((Float.parseFloat(parts[6]) * numerator ) / denominator);
-            addEntry8((Float.parseFloat(parts[7]) * numerator ) / denominator);
-        }
-
-
-//        new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                int count = 1;
-//                for (String part : parts) {
-//                    float f = Float.parseFloat(part);
-//                    f = (f * numerator) / denominator;
-//                    data_raw.add(f);
-//                    switch (count) {
-//                        case 1:
-//                            addEntry(f);
-//                            break;
-//                        case 2:
-//                            addEntry2(f);
-//                            break;
-//                        case 3:
-//                            addEntry3(f);
-//                            break;
-//                        case 4:
-//                            addEntry4(f);
-//                            break;
-//                        case 5:
-//                            addEntry5(f);
-//                            break;
-//                        case 6:
-//                            addEntry6(f);
-//                            break;
-//                        case 7:
-//                            addEntry7(f);
-//                            break;
-//                        case 8:
-//                            addEntry8(f);
-//                            break;
-//                    }
-//                    count++;
-//                }
-//            }
-//        }).start();
-
-        if (data != null) {
-            // data format example: +01012 -00234 +01374 -01516 +01656 +01747 +00131 -00351
-            mDataField.setText(data); // print the n-dimensional array after the data
-        }
-    }
-
-//    private INDArray dataToMicroVolts(INDArray data) {
-//        // Conversion formula: V_in = X*1.65V/(1000 * GAIN * 2048)
-//        // Assuming GAIN = 64
-//        float denominator = 1000 * 64 * 2048;
-//        INDArray result = (data.mul(1650000)).div(denominator);
-//        return result;
-//    }
-    // Demonstrates how to iterate through the supported GATT Services/Characteristics.
-    // In this sample, we populate the data structure that is bound to the ExpandableListView
-    // on the UI.
-    private void displayGattServices(List<BluetoothGattService> gattServices) {
+    private void writeGattCharacteristic(List<BluetoothGattService> gattServices) {
         if (gattServices == null) return;
         String uuid = null;
-        String unknownServiceString = getResources().getString(R.string.unknown_service);
-        String unknownCharaString = getResources().getString(R.string.unknown_characteristic);
         ArrayList<HashMap<String, String>> gattServiceData = new ArrayList<HashMap<String, String>>();
         ArrayList<ArrayList<HashMap<String, String>>> gattCharacteristicData
                 = new ArrayList<ArrayList<HashMap<String, String>>>();
-        mGattCharacteristics = new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
-
-        // Loops through available GATT Services.
         for (BluetoothGattService gattService : gattServices) {
-            HashMap<String, String> currentServiceData = new HashMap<String, String>();
             uuid = gattService.getUuid().toString();
-            currentServiceData.put(
-                    LIST_NAME, SampleGattAttributes.lookup(uuid, unknownServiceString));
-            if(uuid.equals("a22686cb-9268-bd91-dd4f-b52d03d85593")) {
-                currentServiceData.put(LIST_NAME, "EEG Data Service");
-                currentServiceData.put(LIST_UUID, uuid);
-                gattServiceData.add(currentServiceData);
+            if (uuid.equals("a22686cb-9268-bd91-dd4f-b52d03d85593")) {
 
-                ArrayList<HashMap<String, String>> gattCharacteristicGroupData =
-                        new ArrayList<HashMap<String, String>>();
+            } else {
                 List<BluetoothGattCharacteristic> gattCharacteristics =
                         gattService.getCharacteristics();
-                ArrayList<BluetoothGattCharacteristic> charas =
-                        new ArrayList<BluetoothGattCharacteristic>();
-
                 // Loops through available Characteristics.
                 for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
-                    charas.add(gattCharacteristic);
-
-                    HashMap<String, String> currentCharaData = new HashMap<String, String>();
-                    uuid = gattCharacteristic.getUuid().toString();
-                    currentCharaData.put(
-                            LIST_NAME, SampleGattAttributes.lookup(uuid, unknownCharaString));
-                    // If not really needed since the filtered service has only one characteristic
-                    if(uuid.equals("faa7b588-19e5-f590-0545-c99f193c5c3e")){
-                        currentCharaData.put(LIST_NAME, "EEG Data Values");
-                        currentCharaData.put(LIST_UUID, uuid);
-                        gattCharacteristicGroupData.add(currentCharaData);
+                    // uuid -> "faa7b588-19e5-f590-0545-c99f193c5c3e"
+                    // start reading the EEG data received from this gatt characteristic
+                    final int charaProp = gattCharacteristic.getProperties();
+                    if (((charaProp & BluetoothGattCharacteristic.PROPERTY_WRITE) |
+                            (charaProp & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) > 0) {
+                        // writing characteristic functions
+                        mWriteCharacteristic = gattCharacteristic;
+                        final byte[] stored = mWriteCharacteristic.getValue();
+                        if (stored != null) {
+                            Toast.makeText(
+                                    getApplicationContext(),
+                                    "CHARACTERISTIC VALUE = " + stored.toString(),
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        } else {
+                            // gain-> {0.5:0b111, 1:0b000, 2:0b001, 4:0b010, 8:0b011, 16:0b100, 32:0b101,64:0b110}
+                            final byte[] newValue = new byte[6];
+                            newValue[4] = 0b110;
+                            switch (selected_gain) {
+                                case "0.5":
+                                    newValue[4] = 0b111;
+                                    break;
+                                case "1":
+                                    newValue[4] = 0b000;
+                                    break;
+                                case "2":
+                                    newValue[4] = 0b001;
+                                    break;
+                                case "4":
+                                    newValue[4] = 0b010;
+                                    break;
+                                case "8":
+                                    newValue[4] = 0b011;
+                                    break;
+                                case "16":
+                                    newValue[4] = 0b100;
+                                    break;
+                                case "32":
+                                    newValue[4] = 0b101;
+                                    break;
+                                case "64":
+                                    newValue[4] = 0b110;
+                                    break;
+                            }
+                            mWriteCharacteristic.setValue(newValue);
+                            mBluetoothLeService.writeCharacteristic(mWriteCharacteristic);
+                            mBluetoothLeService.disconnect();
+                            mBluetoothLeService.connect(mDeviceAddress);
+                        }
                     }
                 }
-                mGattCharacteristics.add(charas);
-                gattCharacteristicData.add(gattCharacteristicGroupData);
             }
         }
-
-        SimpleExpandableListAdapter gattServiceAdapter = new SimpleExpandableListAdapter(
-                this,
-                gattServiceData,
-                android.R.layout.simple_expandable_list_item_2,
-                new String[] {LIST_NAME, LIST_UUID},
-                new int[] { android.R.id.text1, android.R.id.text2 },
-                gattCharacteristicData,
-                android.R.layout.simple_expandable_list_item_2,
-                new String[] {LIST_NAME, LIST_UUID},
-                new int[] { android.R.id.text1, android.R.id.text2 }
-        );
-        mGattServicesList.setAdapter(gattServiceAdapter);
     }
 
-    private static IntentFilter makeGattUpdateIntentFilter() {
-        final IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(BluetoothLeService.ACTION_GATT_CONNECTED);
-        intentFilter.addAction(BluetoothLeService.ACTION_GATT_DISCONNECTED);
-        intentFilter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED);
-        intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
-        return intentFilter;
+
+    // Demonstrates how to iterate through the supported GATT Services/Characteristics.
+    // In this sample, we populate the data structure that is bound to the ExpandableListView
+    // on the UI.
+    private void readGattCharacteristic(List<BluetoothGattService> gattServices) {
+        if (gattServices == null) return;
+        String uuid = null;
+        ArrayList<HashMap<String, String>> gattServiceData = new ArrayList<HashMap<String, String>>();
+        ArrayList<ArrayList<HashMap<String, String>>> gattCharacteristicData
+                = new ArrayList<ArrayList<HashMap<String, String>>>();
+        // Loops through available GATT Services.
+        for (BluetoothGattService gattService : gattServices) {
+            uuid = gattService.getUuid().toString();
+            if (uuid.equals("a22686cb-9268-bd91-dd4f-b52d03d85593")) {
+                List<BluetoothGattCharacteristic> gattCharacteristics =
+                        gattService.getCharacteristics();
+                // Loops through available Characteristics.
+                for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
+                    // uuid -> "faa7b588-19e5-f590-0545-c99f193c5c3e"
+                    // start reading the EEG data received from this gatt characteristic
+                    final int charaProp = gattCharacteristic.getProperties();
+                    if ((charaProp | BluetoothGattCharacteristic.PROPERTY_READ) > 0) {
+                        // If there is an active notification on a characteristic, clear
+                        // it first so it doesn't update the data field on the user interface.
+                        if (mNotifyCharacteristic != null) {
+                            mBluetoothLeService.setCharacteristicNotification(
+                                    mNotifyCharacteristic, false);
+                            mNotifyCharacteristic = null;
+                        }
+                        mBluetoothLeService.readCharacteristic(gattCharacteristic);
+                    }
+                    if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
+                        mNotifyCharacteristic = gattCharacteristic;
+                        mBluetoothLeService.setCharacteristicNotification(
+                                gattCharacteristic, true);
+                    }
+                    mBluetoothLeService.disconnect();
+                    mBluetoothLeService.connect(mDeviceAddress);
+                }
+            }
+        }
     }
 }
