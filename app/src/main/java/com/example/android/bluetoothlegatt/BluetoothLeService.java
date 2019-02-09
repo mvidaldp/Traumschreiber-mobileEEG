@@ -107,7 +107,7 @@ public class BluetoothLeService extends Service {
         public void onCharacteristicWrite(BluetoothGatt gatt,
                                           BluetoothGattCharacteristic characteristic,
                                           int status) {
-            Log.d(TAG,"------------- onCharacteristicWrite status: " + status);
+            Log.d(TAG, "------------- onCharacteristicWrite status: " + status);
 
             // do somethings here.
         }

@@ -103,7 +103,7 @@ public class NoteToFrequency {
         else if (this.accidental == 'b')
             steps -= 1;
 
-        double a = Math.pow(2 , (1 / 12.0)); // a = 1.0594630943592953
+        double a = Math.pow(2, (1 / 12.0)); // a = 1.0594630943592953
         double f = this.tuning * Math.pow(a, steps);
         double roundF = Math.round(f * 100.0) / 100.0;
         return roundF;

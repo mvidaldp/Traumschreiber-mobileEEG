@@ -162,6 +162,7 @@ public class DeviceControlActivity extends Activity {
             } else mBluetoothLeService.connect(mDeviceAddress);
             // Automatically connects to the device upon successful start-up initialization.
         }
+
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
             mBluetoothLeService = null;
@@ -190,32 +191,6 @@ public class DeviceControlActivity extends Activity {
     private long start_timestamp;
     private long end_timestamp;
     private String selected_gain = "1";  // default gain
-    private View.OnClickListener btnRecordOnClickListener = new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            if (!recording) {
-                notes.clear();
-                keys.clear();
-                s_times.clear();
-                keys.addAll(generateKeys());
-                notes.addAll(keysToNotes(keys));
-                askForLabel();
-            } else endTrial();
-        }
-    };
-    private CompoundButton.OnCheckedChangeListener switchPlotsOnCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
-        @Override
-        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-            if (!isChecked) {
-                layout_plots.setVisibility(ViewStub.GONE);
-                plotting = false;
-            } else {
-                layout_plots.setVisibility(ViewStub.VISIBLE);
-                plotting = true;
-            }
-        }
-    };
-    private List<List<Float>> accumulated = new ArrayList<>();
     // Handles various events fired by the Service.
     // ACTION_GATT_CONNECTED: connected to a GATT server.
     // ACTION_GATT_DISCONNECTED: disconnected from a GATT server.
@@ -259,6 +234,32 @@ public class DeviceControlActivity extends Activity {
             }
         }
     };
+    private View.OnClickListener btnRecordOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (!recording) {
+                notes.clear();
+                keys.clear();
+                s_times.clear();
+                keys.addAll(generateKeys());
+                notes.addAll(keysToNotes(keys));
+                askForLabel();
+            } else endTrial();
+        }
+    };
+    private CompoundButton.OnCheckedChangeListener switchPlotsOnCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            if (!isChecked) {
+                layout_plots.setVisibility(ViewStub.GONE);
+                plotting = false;
+            } else {
+                layout_plots.setVisibility(ViewStub.VISIBLE);
+                plotting = true;
+            }
+        }
+    };
+    private List<List<Float>> accumulated = new ArrayList<>();
 
     private static IntentFilter makeGattUpdateIntentFilter() {
         final IntentFilter intentFilter = new IntentFilter();
@@ -531,7 +532,7 @@ public class DeviceControlActivity extends Activity {
         // Conversion formula: V_in = X*1.65V/(1000 * GAIN * 2048)
         float gain = Float.parseFloat(selected_gain);
         float numerator = 1650;
-        float denominator =  gain * 2048;
+        float denominator = gain * 2048;
         List<Float> data_trans = new ArrayList<>();
         for (int datapoint : data) {
             float dp = datapoint;
@@ -832,6 +833,7 @@ public class DeviceControlActivity extends Activity {
             public void onValueSelected(Entry entry, Highlight h) {
                 //entry.getData() returns null here
             }
+
             @Override
             public void onNothingSelected() {
 

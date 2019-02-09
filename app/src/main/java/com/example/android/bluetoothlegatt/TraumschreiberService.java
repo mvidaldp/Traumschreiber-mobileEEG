@@ -11,15 +11,14 @@ public class TraumschreiberService {
     // Names chosen according to the python tflow_edge Traumschreiber.py
     public final static UUID BIOSIGNALS_UUID = UUID.fromString("faa7b588-19e5-f590-0545-c99f193c5c3e");
     public final static UUID LEDS_UUID = UUID.fromString("fcbea85a-4d87-18a2-2141-0d8d2437c0a4");
-
-    public static boolean isTraumschreiberAddress(String bluetoothDeviceAddress) {
-        return bluetoothDeviceAddress.startsWith(VENDOR_PREFIX);
-    }
-
     String mTraumschreiberDeviceAddress;
 
     public TraumschreiberService(String traumschreiberDeviceAddress) {
         this.mTraumschreiberDeviceAddress = traumschreiberDeviceAddress;
+    }
+
+    public static boolean isTraumschreiberAddress(String bluetoothDeviceAddress) {
+        return bluetoothDeviceAddress.startsWith(VENDOR_PREFIX);
     }
 
     /***
@@ -30,9 +29,9 @@ public class TraumschreiberService {
     public static int[] decompress(byte[] data_bytes) {
         int bytelengthDatapoint = 2;
         int[] data_ints = new int[data_bytes.length / bytelengthDatapoint];
-        Log.d("Decompressing", "decompress: "+String.format("%02X %02X ", data_bytes[0], data_bytes[1]));
-        for(int i = 0; i < data_bytes.length /bytelengthDatapoint; i++) {
-            int new_int = (data_bytes[i*bytelengthDatapoint + 1]) << 8 | (data_bytes[i*bytelengthDatapoint + 0])&0xff;
+        Log.d("Decompressing", "decompress: " + String.format("%02X %02X ", data_bytes[0], data_bytes[1]));
+        for (int i = 0; i < data_bytes.length / bytelengthDatapoint; i++) {
+            int new_int = (data_bytes[i * bytelengthDatapoint + 1]) << 8 | (data_bytes[i * bytelengthDatapoint + 0]) & 0xff;
             data_ints[i] = new_int;
         }
         return data_ints;
