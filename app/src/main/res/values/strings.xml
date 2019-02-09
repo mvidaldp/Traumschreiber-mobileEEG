@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (C) 2013 The Android Open Source Project
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+-->
+<resources>
+    <string name="ble_not_supported">BLE is not supported</string>
+    <string name="label_data">Data:</string>
+    <string name="label_resolution">Resolution:</string>
+    <string name="label_device_address">Device address:</string>
+    <string name="label_state">State:</string>
+    <string name="no_data">No data</string>
+    <string name="connected">Connected</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="micro_volts">µV</string>
+    <string name="ch1">1</string>
+    <string name="ch2">2</string>
+    <string name="ch3">3</string>
+    <string name="ch4">4</string>
+    <string name="ch5">5</string>
+    <string name="ch6">6</string>
+    <string name="ch7">7</string>
+    <string name="ch8">8</string>
+    <string-array name="gains">
+        <item>0.5</item>
+        <item>1</item>
+        <item>2</item>
+        <item>4</item>
+        <item>8</item>
+        <item>16</item>
+        <item>32</item>
+        <item>64</item>
+    </string-array>
+    <string name="label_gain">Gain:</string>
+    <string name="error_bluetooth_not_supported">Bluetooth not supported.</string>
+    <string name="unknown_device">Unknown device</string>
+    <!-- Menu items -->
+    <string name="menu_connect">Connect</string>
+    <string name="menu_disconnect">Disconnect</string>
+    <string name="menu_scan">Scan</string>
+    <string name="menu_stop">Stop</string>
+    <string name="no_address">No address</string>
+    <string name="ch1_label">ch1</string>
+    <string name="ch2_label">ch2</string>
+    <string name="ch3_label">ch3</string>
+    <string name="ch4_label">ch4</string>
+    <string name="ch5_label">ch5</string>
+    <string name="ch7_label">ch7</string>
+    <string name="ch8_label">ch8</string>
+    <string name="real_time_plot_label">Real-time plot</string>
+    <string name="record_label">Record</string>
+    <string name="ch6_label">ch6</string>
+    <string name="YAxis_label">µV</string>
+    <string name="XAxis_label">Time (ms)</string>
+    <string name="traumschreiber_filter_title">Only showing Traumschreiber devices here:</string>
+</resources>
