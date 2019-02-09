@@ -23,7 +23,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -94,7 +93,7 @@ public class DeviceScanActivity extends ListActivity {
     private ScanSettings settings;
     private List<ScanFilter> filters;
     private BluetoothGatt mGatt;
-    private ScanCallback mScanCallback = new ScanCallback() {
+    private final ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             Log.i("callbackType", String.valueOf(callbackType));
@@ -171,6 +170,7 @@ public class DeviceScanActivity extends ListActivity {
         return true;
     }
 
+    @SuppressWarnings("StatementWithEmptyBody")
     @Override
     protected void onResume() {
         super.onResume();
@@ -324,7 +324,7 @@ public class DeviceScanActivity extends ListActivity {
         invalidateOptionsMenu();
     }
 
-    public void connectToDevice(BluetoothDevice device) {
+    private void connectToDevice(BluetoothDevice device) {
         if (mGatt == null) {
             mGatt = device.connectGatt(this, false, gattCallback);
             scanLeDevice(false); // will stop after first device detection
@@ -338,20 +338,16 @@ public class DeviceScanActivity extends ListActivity {
 
     // Adapter for holding devices found through scanning.
     private class LeDeviceListAdapter extends BaseAdapter {
-        private ArrayList<BluetoothDevice> mLeDevices;
-        private LayoutInflater mInflator;
+        private final ArrayList<BluetoothDevice> mLeDevices;
 
-        public LeDeviceListAdapter() {
+        LeDeviceListAdapter() {
             super();
             mLeDevices = new ArrayList<>();
-            mInflator = DeviceScanActivity.this.getLayoutInflater();
         }
 
-        public void addDevice(BluetoothDevice device) {
+        void addDevice(BluetoothDevice device) {
             if (TraumschreiberService.isTraumschreiberAddress(device.getAddress())) {
                 Log.d(TAG, "addDevice: Found a Traumschreiber with ID " + device.getAddress());
-                TraumschreiberService traumschreiberService = new TraumschreiberService(device.getAddress());
-
                 if (!mLeDevices.contains(device)) {
                     mLeDevices.add(device);
                 }
@@ -360,11 +356,11 @@ public class DeviceScanActivity extends ListActivity {
             }
         }
 
-        public BluetoothDevice getDevice(int position) {
+        BluetoothDevice getDevice(int position) {
             return mLeDevices.get(position);
         }
 
-        public void clear() {
+        void clear() {
             mLeDevices.clear();
         }
 

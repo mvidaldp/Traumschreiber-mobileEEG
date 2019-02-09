@@ -56,12 +56,12 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
@@ -75,61 +75,59 @@ public class DeviceControlActivity extends Activity {
     public static final String EXTRAS_DEVICE_NAME = "DEVICE_NAME";
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
     private final static String TAG = DeviceControlActivity.class.getSimpleName();
-    final Handler handler = new Handler();
-    private final String LIST_NAME = "NAME";
-    private final String LIST_UUID = "UUID";
-    double freq;
-    String key = "";
-    float res_time;
-    float res_freq;
-    List<Float> dp_received = new ArrayList<>();
-    Timer timer;
-    Timer timer2;
-    TimerTask timerTask;
-    TimerTask timerTask2;
-    TimerTask timerTask3;
-    List<ImmutablePair<Integer, Integer>> keys = new ArrayList<>();
-    List<ImmutablePair<String, Double>> notes = new ArrayList<>();
-    List<ImmutablePair<String, Double>> stimuli_data = new ArrayList<>();
-    List<Float> s_times = new ArrayList<>();
-    MediaPlayer mMediaPlayer = new MediaPlayer();
+    private final Handler handler = new Handler();
+    private double freq;
+    private String key = "";
+    private float res_time;
+    private float res_freq;
+    private final List<Float> dp_received = new ArrayList<>();
+    private Timer timer;
+    private Timer timer2;
+    private TimerTask timerTask;
+    private TimerTask timerTask2;
+    private TimerTask timerTask3;
+    private final List<ImmutablePair<Integer, Integer>> keys = new ArrayList<>();
+    private final List<ImmutablePair<String, Double>> notes = new ArrayList<>();
+    private final List<ImmutablePair<String, Double>> stimuli_data = new ArrayList<>();
+    private final List<Float> s_times = new ArrayList<>();
+    private MediaPlayer mMediaPlayer = new MediaPlayer();
     // constants
-    int NKEYS = 12;
-    int MINOCTAVE = 4;
-    int MAXOCTAVE = 6;
-    int STIMULUS_START = 4000;
-    int STIMULUS_LENGTH = 1000;
-    int PERIOD = 3000;  // milliseconds
-    int SILENCE_START = 5500;
-    int TUNING = 440;
-    float DATAPOINT_TIME = 4.5f;
-    int DPS_AVG_CNT = 20;
-    String TONES_PATH = Environment.getExternalStorageDirectory().getPath() + "/Tones/";
-    ArrayList<Entry> lineEntries1 = new ArrayList<Entry>();
-    int cnt = 0;
-    ArrayList<Entry> lineEntries2 = new ArrayList<Entry>();
-    ArrayList<Entry> lineEntries3 = new ArrayList<Entry>();
-    ArrayList<Entry> lineEntries4 = new ArrayList<Entry>();
-    ArrayList<Entry> lineEntries5 = new ArrayList<Entry>();
-    ArrayList<Entry> lineEntries6 = new ArrayList<Entry>();
-    ArrayList<Entry> lineEntries7 = new ArrayList<Entry>();
-    ArrayList<Entry> lineEntries8 = new ArrayList<Entry>();
-    int ch1_color;
-    int ch2_color;
-    int ch3_color;
-    int ch4_color;
-    int ch5_color;
-    int ch6_color;
-    int ch7_color;
-    int ch8_color;
-    boolean show_ch1 = true;
-    boolean show_ch2 = true;
-    boolean show_ch3 = true;
-    boolean show_ch4 = true;
-    boolean show_ch5 = true;
-    boolean show_ch6 = true;
-    boolean show_ch7 = true;
-    boolean show_ch8 = true;
+    private final int NKEYS = 12;
+    private final int MINOCTAVE = 4;
+    private final int MAXOCTAVE = 6;
+    private final int STIMULUS_START = 4000;
+    private final int STIMULUS_LENGTH = 1000;
+    private final int PERIOD = 3000;  // milliseconds
+    private final int SILENCE_START = 5500;
+    private final int TUNING = 440;
+    private final float DATAPOINT_TIME = 4.5f;
+    private final int DPS_AVG_CNT = 20;
+    private final String TONES_PATH = Environment.getExternalStorageDirectory().getPath() + "/Tones/";
+    private final ArrayList<Entry> lineEntries1 = new ArrayList<>();
+    private int cnt = 0;
+    private final ArrayList<Entry> lineEntries2 = new ArrayList<>();
+    private final ArrayList<Entry> lineEntries3 = new ArrayList<>();
+    private final ArrayList<Entry> lineEntries4 = new ArrayList<>();
+    private final ArrayList<Entry> lineEntries5 = new ArrayList<>();
+    private final ArrayList<Entry> lineEntries6 = new ArrayList<>();
+    private final ArrayList<Entry> lineEntries7 = new ArrayList<>();
+    private final ArrayList<Entry> lineEntries8 = new ArrayList<>();
+    private int ch1_color;
+    private int ch2_color;
+    private int ch3_color;
+    private int ch4_color;
+    private int ch5_color;
+    private int ch6_color;
+    private int ch7_color;
+    private int ch8_color;
+    private boolean show_ch1 = true;
+    private boolean show_ch2 = true;
+    private boolean show_ch3 = true;
+    private boolean show_ch4 = true;
+    private boolean show_ch5 = true;
+    private boolean show_ch6 = true;
+    private boolean show_ch7 = true;
+    private boolean show_ch8 = true;
     private TextView mConnectionState;
     private TextView mCh1;
     private TextView mCh2;
@@ -140,13 +138,6 @@ public class DeviceControlActivity extends Activity {
     private TextView mCh7;
     private TextView mCh8;
     private CheckBox chckbx_ch1;
-    private CheckBox chckbx_ch2;
-    private CheckBox chckbx_ch3;
-    private CheckBox chckbx_ch4;
-    private CheckBox chckbx_ch5;
-    private CheckBox chckbx_ch6;
-    private CheckBox chckbx_ch7;
-    private CheckBox chckbx_ch8;
     private TextView mDataResolution;
     private String mDeviceName;
     private String mDeviceAddress;
@@ -170,19 +161,16 @@ public class DeviceControlActivity extends Activity {
     };
     private boolean mConnected = false;
     private BluetoothGattCharacteristic mNotifyCharacteristic;
-    private BluetoothGattCharacteristic mWriteCharacteristic;
     private LineChart mChart;
     private Button btn_record;
     private Switch switch_plots;
     private View layout_plots;
-    private Spinner gain_spinner;
     private boolean recording = false;
     private boolean plotting = false;
     private boolean playing = false;
     private List<float[]> main_data;
     private float data_cnt = 0;
     private long start_data = 0;
-    private long last_data = 0;
     private String start_time;
     private String end_time;
     private long start_watch;
@@ -224,7 +212,7 @@ public class DeviceControlActivity extends Activity {
                 if (plotting) plotData(microV);
                 if (recording) storeData(microV);
                 if (start_data == 0) start_data = System.currentTimeMillis();
-                last_data = System.currentTimeMillis();
+                long last_data = System.currentTimeMillis();
                 res_time = (last_data - start_data) / data_cnt;
                 res_freq = (1 / res_time) * 1000;
                 String hertz = String.valueOf((int) res_freq) + "Hz";
@@ -234,7 +222,7 @@ public class DeviceControlActivity extends Activity {
             }
         }
     };
-    private View.OnClickListener btnRecordOnClickListener = new View.OnClickListener() {
+    private final View.OnClickListener btnRecordOnClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             if (!recording) {
@@ -247,7 +235,7 @@ public class DeviceControlActivity extends Activity {
             } else endTrial();
         }
     };
-    private CompoundButton.OnCheckedChangeListener switchPlotsOnCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
+    private final CompoundButton.OnCheckedChangeListener switchPlotsOnCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
         @Override
         public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
             if (!isChecked) {
@@ -259,7 +247,6 @@ public class DeviceControlActivity extends Activity {
             }
         }
     };
-    private List<List<Float>> accumulated = new ArrayList<>();
 
     private static IntentFilter makeGattUpdateIntentFilter() {
         final IntentFilter intentFilter = new IntentFilter();
@@ -295,7 +282,7 @@ public class DeviceControlActivity extends Activity {
 
     private List<ImmutablePair<String, Double>> keysToNotes(List<ImmutablePair<Integer, Integer>> keysList) {
         char letter = ' ';
-        char accidental = ' ';
+        char accidental;
         String note;
         List<ImmutablePair<String, Double>> notesFreqs = new ArrayList<>();
         for (ImmutablePair<Integer, Integer> pair : keysList) {
@@ -355,7 +342,7 @@ public class DeviceControlActivity extends Activity {
         return notesFreqs;
     }
 
-    public void startTimer() {
+    private void startTimer() {
         //set a new Timer
         timer = new Timer();
         //initialize the TimerTask's job
@@ -367,7 +354,7 @@ public class DeviceControlActivity extends Activity {
         timer.schedule(timerTask2, SILENCE_START, PERIOD);
     }
 
-    public void initializeTimerTask2() {
+    private void initializeTimerTask2() {
         timerTask3 = new TimerTask() {
             public void run() {
                 handler.post(new Runnable() {
@@ -381,7 +368,7 @@ public class DeviceControlActivity extends Activity {
         };
     }
 
-    public void initializeTimerTask() {
+    private void initializeTimerTask() {
         timerTask = new TimerTask() {
             public void run() {
                 handler.post(new Runnable() {
@@ -517,7 +504,7 @@ public class DeviceControlActivity extends Activity {
                 .input("E.g. walking, eating, sleeping, etc.",
                         "", new MaterialDialog.InputCallback() {
                             @Override
-                            public void onInput(MaterialDialog dialog, CharSequence input) {
+                            public void onInput(@NonNull MaterialDialog dialog, CharSequence input) {
                                 session_label = input.toString();
                                 // Use a new tread as this can take a while
                                 // onResume we start our timer so it can start when the app comes from the background
@@ -535,8 +522,7 @@ public class DeviceControlActivity extends Activity {
         float denominator = gain * 2048;
         List<Float> data_trans = new ArrayList<>();
         for (int datapoint : data) {
-            float dp = datapoint;
-            data_trans.add((dp * numerator) / denominator);
+            data_trans.add((datapoint * numerator) / denominator);
         }
         return data_trans;
     }
@@ -553,15 +539,15 @@ public class DeviceControlActivity extends Activity {
     private void displayData(List<Float> data_microV) {
         if (data_microV != null) {
             // data format example: +01012 -00234 +01374 -01516 +01656 +01747 +00131 -00351
-            String trans = "";
-            List<String> values = new ArrayList<String>();
+            StringBuilder trans = new StringBuilder();
+            List<String> values = new ArrayList<>();
             for (Float value : data_microV) {
                 if (value >= 0) {
-                    trans += "+";
-                    trans += String.format("%5.2f", value);
-                } else trans += String.format("%5.2f", value);
-                values.add(trans);
-                trans = "";
+                    trans.append("+");
+                    trans.append(String.format("%5.2f", value));
+                } else trans.append(String.format("%5.2f", value));
+                values.add(trans.toString());
+                trans = new StringBuilder();
             }
             mCh1.setText(values.get(0));
             mCh2.setText(values.get(1));
@@ -599,14 +585,15 @@ public class DeviceControlActivity extends Activity {
         String dp_header = "Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8,Key,Freq";
         UUID id = UUID.randomUUID();
         @SuppressLint("SimpleDateFormat") String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
-        Character delimiter = ',';
-        Character break_line = '\n';
+        char delimiter = ',';
+        char break_line = '\n';
         try {
             File formatted = new File(Environment.getExternalStoragePublicDirectory(
                     Environment.DIRECTORY_DOWNLOADS),
                     date + ".csv");
             // if file doesn't exists, then create it
-            if (!formatted.exists()) formatted.createNewFile();
+            if (!formatted.exists()) //noinspection ResultOfMethodCallIgnored
+                formatted.createNewFile();
             FileWriter fileWriter = new FileWriter(formatted);
             int rows = main_data.size();
             int cols = main_data.get(0).length;
@@ -618,7 +605,7 @@ public class DeviceControlActivity extends Activity {
             fileWriter.append(delimiter);
             fileWriter.append(date);
             fileWriter.append(delimiter);
-            fileWriter.append(rows + "x" + cols);
+            fileWriter.append(String.valueOf(rows)).append("x").append(String.valueOf(cols));
             fileWriter.append(delimiter);
             fileWriter.append(recording_time);
             fileWriter.append(delimiter);
@@ -662,7 +649,7 @@ public class DeviceControlActivity extends Activity {
             fileWriter.flush();
             fileWriter.close();
         } catch (Exception e) {
-            Log.e(TAG, String.format("Error storing the data into a CSV file: " + e));
+            Log.e(TAG, "Error storing the data into a CSV file: " + e);
         }
     }
 
@@ -680,7 +667,7 @@ public class DeviceControlActivity extends Activity {
         ch8_color = ContextCompat.getColor(getApplicationContext(), R.color.black);
         btn_record = findViewById(R.id.btn_record);
         switch_plots = findViewById(R.id.switch_plots);
-        gain_spinner = findViewById(R.id.gain_spinner);
+        Spinner gain_spinner = findViewById(R.id.gain_spinner);
         // Create an ArrayAdapter using the string array and a default spinner layout
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
                 R.array.gains, android.R.layout.simple_spinner_item);
@@ -692,7 +679,7 @@ public class DeviceControlActivity extends Activity {
         gain_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                float max = 1700f;
+                float max;
                 switch (position) {
                     case 0:
                         selected_gain = "0.5";
@@ -773,13 +760,13 @@ public class DeviceControlActivity extends Activity {
         mCh7.setTextColor(ch7_color);
         mCh8.setTextColor(ch8_color);
         chckbx_ch1 = findViewById(R.id.checkBox_ch1);
-        chckbx_ch2 = findViewById(R.id.checkBox_ch2);
-        chckbx_ch3 = findViewById(R.id.checkBox_ch3);
-        chckbx_ch4 = findViewById(R.id.checkBox_ch4);
-        chckbx_ch5 = findViewById(R.id.checkBox_ch5);
-        chckbx_ch6 = findViewById(R.id.checkBox_ch6);
-        chckbx_ch7 = findViewById(R.id.checkBox_ch7);
-        chckbx_ch8 = findViewById(R.id.checkBox_ch8);
+        CheckBox chckbx_ch2 = findViewById(R.id.checkBox_ch2);
+        CheckBox chckbx_ch3 = findViewById(R.id.checkBox_ch3);
+        CheckBox chckbx_ch4 = findViewById(R.id.checkBox_ch4);
+        CheckBox chckbx_ch5 = findViewById(R.id.checkBox_ch5);
+        CheckBox chckbx_ch6 = findViewById(R.id.checkBox_ch6);
+        CheckBox chckbx_ch7 = findViewById(R.id.checkBox_ch7);
+        CheckBox chckbx_ch8 = findViewById(R.id.checkBox_ch8);
         chckbx_ch1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 show_ch1 = isChecked;
@@ -827,7 +814,7 @@ public class DeviceControlActivity extends Activity {
         setChart();
     }
 
-    void setChart() {
+    private void setChart() {
         OnChartValueSelectedListener ol = new OnChartValueSelectedListener() {
             @Override
             public void onValueSelected(Entry entry, Highlight h) {
@@ -882,7 +869,7 @@ public class DeviceControlActivity extends Activity {
         bottomAxis.setTextColor(Color.GRAY);
     }
 
-    public void addEntries(List<Float> f) {
+    private void addEntries(List<Float> f) {
         List<ILineDataSet> datasets = new ArrayList<>(); // for adding multiple plots
         float x = cnt * DATAPOINT_TIME;
         if (show_ch1) {
@@ -1087,9 +1074,6 @@ public class DeviceControlActivity extends Activity {
     private void writeGattCharacteristic(List<BluetoothGattService> gattServices) {
         if (gattServices == null) return;
         String uuid;
-        ArrayList<HashMap<String, String>> gattServiceData = new ArrayList<>();
-        ArrayList<ArrayList<HashMap<String, String>>> gattCharacteristicData
-                = new ArrayList<>();
         for (BluetoothGattService gattService : gattServices) {
             uuid = gattService.getUuid().toString();
             if (!uuid.equals("a22686cb-9268-bd91-dd4f-b52d03d85593")) {
@@ -1103,11 +1087,10 @@ public class DeviceControlActivity extends Activity {
                     if (((charaProp & BluetoothGattCharacteristic.PROPERTY_WRITE) |
                             (charaProp & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) > 0) {
                         // writing characteristic functions
-                        mWriteCharacteristic = gattCharacteristic;
+                        BluetoothGattCharacteristic mWriteCharacteristic = gattCharacteristic;
 //                        final byte[] stored = mWriteCharacteristic.getValue();
                         // gain-> {0.5:0b111, 1:0b000, 2:0b001, 4:0b010, 8:0b011, 16:0b100, 32:0b101,64:0b110}
                         final byte[] newValue = new byte[6];
-                        newValue[4] = 0b110;
                         switch (selected_gain) {
                             case "0.5":
                                 newValue[4] = 0b111;
@@ -1151,9 +1134,6 @@ public class DeviceControlActivity extends Activity {
     private void readGattCharacteristic(List<BluetoothGattService> gattServices) {
         if (gattServices == null) return;
         String uuid;
-        ArrayList<HashMap<String, String>> gattServiceData = new ArrayList<>();
-        ArrayList<ArrayList<HashMap<String, String>>> gattCharacteristicData
-                = new ArrayList<>();
         // Loops through available GATT Services.
         for (BluetoothGattService gattService : gattServices) {
             uuid = gattService.getUuid().toString();

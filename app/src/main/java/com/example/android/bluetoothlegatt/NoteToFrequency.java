@@ -1,23 +1,13 @@
 package com.example.android.bluetoothlegatt;
 
-import java.util.List;
 
-import static java.util.Arrays.asList;
+class NoteToFrequency {
 
-
-public class NoteToFrequency {
-
-    List<Character> RIGHT_SCORES = asList('A', 'B', 'C', 'D', 'E', 'F', 'G');
-    List<Character> WRONG_FLAT = asList('C', 'F');
-    List<Character> WRONG_SHARP = asList('B', 'E');
-    int DEFAULT_TUNING = 440;
-    double DEFAULT_DURATION = 2.0;
-    char note;
-    char accidental;
-    int octave;
-    int duration;
-    int tuning;
-    double frequency;
+    private final char note;
+    private final char accidental;
+    private final int octave;
+    private final int tuning;
+    final double frequency;
 
     public NoteToFrequency(char note, char accidental, int octave, int tuning) {
         this.note = note;
@@ -27,7 +17,7 @@ public class NoteToFrequency {
         this.frequency = calculateFrequency();
     }
 
-    public double calculateFrequency() {
+    private double calculateFrequency() {
         /*
          * The basic formula for the frequencies of the notes of the equal
          * tempered scale is given by fn = f0 * (a)n where f0 = the frequency
@@ -105,7 +95,6 @@ public class NoteToFrequency {
 
         double a = Math.pow(2, (1 / 12.0)); // a = 1.0594630943592953
         double f = this.tuning * Math.pow(a, steps);
-        double roundF = Math.round(f * 100.0) / 100.0;
-        return roundF;
+        return Math.round(f * 100.0) / 100.0;
     }
 }
