@@ -65,5 +65,5 @@
     <string name="record_label">Record</string>
     <string name="ch6_label">ch6</string>
     <string name="YAxis_label">µV</string>
-    <string name="XAxis_label">Time (s)</string>
+    <string name="XAxis_label">Time (ms)</string>
 </resources>

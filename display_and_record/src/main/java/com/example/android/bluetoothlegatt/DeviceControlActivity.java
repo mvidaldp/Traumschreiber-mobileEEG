@@ -101,11 +101,11 @@ public class DeviceControlActivity extends Activity {
     int PERIOD = 3000;  // milliseconds
     int SILENCE_START = 5500;
     int TUNING = 440;
-    float DATAPOINT_TIME = 4.5f / 1000;
-    int DPS_AVG_CNT = 40;
+    float DATAPOINT_TIME = 4.5f;
+    int DPS_AVG_CNT = 20;
     String TONES_PATH = Environment.getExternalStorageDirectory().getPath() + "/Tones/";
     ArrayList<Entry> lineEntries1 = new ArrayList<Entry>();
-    int count = 0;
+    int cnt = 0;
     ArrayList<Entry> lineEntries2 = new ArrayList<Entry>();
     ArrayList<Entry> lineEntries3 = new ArrayList<Entry>();
     ArrayList<Entry> lineEntries4 = new ArrayList<Entry>();
@@ -258,7 +258,6 @@ public class DeviceControlActivity extends Activity {
             }
         }
     };
-    private int cnt = 0;
 
     private static IntentFilter makeGattUpdateIntentFilter() {
         final IntentFilter intentFilter = new IntentFilter();
@@ -420,7 +419,7 @@ public class DeviceControlActivity extends Activity {
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
-                            float s_appearance = (System.currentTimeMillis() - start_watch) / 1000.0f;
+                            float s_appearance = System.currentTimeMillis() - start_watch;
                             s_times.add(s_appearance);
                             String key_n_freq = key + " = " + freq + "Hz";
                             XAxis bottom = mChart.getXAxis();
@@ -479,6 +478,7 @@ public class DeviceControlActivity extends Activity {
     }
 
     private void startTrial() {
+        cnt = 0;
         main_data = new ArrayList<>();
         start_time = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
         start_watch = System.currentTimeMillis();
@@ -494,11 +494,7 @@ public class DeviceControlActivity extends Activity {
         long stop_watch = System.currentTimeMillis();
         end_timestamp = new Timestamp(stop_watch).getTime();
         recording_time = Long.toString(stop_watch - start_watch);
-        Toast.makeText(
-                getApplicationContext(),
-                "Saving EEG session into a file...",
-                Toast.LENGTH_LONG
-        ).show();
+        btn_record.setText("Saving EEG session...");
         if (session_label == null) saveSession();
         else saveSession(session_label);
         session_label = null;
@@ -530,7 +526,6 @@ public class DeviceControlActivity extends Activity {
     private List<Float> transData(int[] data) {
         // Assuming GAIN = 64
         // Conversion formula: V_in = X*1.65V/(1000 * GAIN * 2048)
-        // TODO: Adapt y axis on gain change
         float gain = Float.parseFloat(selected_gain);
         float numerator = 1650;
         float denominator =  gain * 2048;
@@ -546,9 +541,7 @@ public class DeviceControlActivity extends Activity {
         // test 0 -> plot all values (this library and/or the smartphone can't handle it)
 //        addEntries(current);
 //         test 1 -> plot only every certain counter
-        if (cnt % 25 == 0) {
-            addEntries(current);
-        }
+        if (cnt % DPS_AVG_CNT == 0) addEntries(current);
         cnt++;
         // test 2 -> plot the average of a certain number
 //        if (accumulated.size() < DPS_AVG_CNT) accumulated.add(current);
@@ -592,7 +585,7 @@ public class DeviceControlActivity extends Activity {
 
     private void storeData(List<Float> data_microV) {
         float[] f_microV = new float[data_microV.size()];
-        float curr_received = (System.currentTimeMillis() - start_watch) / 1000.0f;
+        float curr_received = System.currentTimeMillis() - start_watch;
         dp_received.add(curr_received);
         int i = 0;
         for (Float f : data_microV) {
@@ -900,7 +893,7 @@ public class DeviceControlActivity extends Activity {
         rightAxis.setEnabled(false);
         // set the x bottom axis
         XAxis bottomAxis = mChart.getXAxis();
-        bottomAxis.setLabelCount(10, true);
+        bottomAxis.setLabelCount(5, false);
         bottomAxis.setPosition(XAxis.XAxisPosition.TOP);
         bottomAxis.setGridColor(Color.WHITE);
         bottomAxis.setTextColor(Color.GRAY);
@@ -908,7 +901,7 @@ public class DeviceControlActivity extends Activity {
 
     public void addEntries(List<Float> f) {
         List<ILineDataSet> datasets = new ArrayList<>(); // for adding multiple plots
-        float x = count * DATAPOINT_TIME * DPS_AVG_CNT;
+        float x = cnt * DATAPOINT_TIME;
         if (show_ch1) {
             lineEntries1.add(new Entry(x, f.get(0)));
             LineDataSet set1 = createSet1(lineEntries1);
@@ -949,15 +942,14 @@ public class DeviceControlActivity extends Activity {
             LineDataSet set8 = createSet8(lineEntries8);
             datasets.add(set8);
         }
-        count++;
         LineData linedata = new LineData(datasets);
         linedata.notifyDataChanged();
         mChart.setData(linedata);
         mChart.notifyDataSetChanged();
         // limit the number of visible entries
-        mChart.setVisibleXRangeMaximum(2);  // in this case you always see 2 seconds
+        mChart.setVisibleXRangeMaximum(500);  // in this case you always see 1000ms
         // move to the latest entry
-        mChart.moveViewToX(linedata.getEntryCount());
+        mChart.moveViewToX(x);
     }
 
 

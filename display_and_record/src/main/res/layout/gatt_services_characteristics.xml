@@ -13,13 +13,13 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
     android:layout_margin="10dp">
 
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
         android:layout_margin="1dp"
         android:orientation="vertical">
 
@@ -34,8 +34,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/label_device_address"
-                android:textStyle="bold"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="5dp"
@@ -59,8 +59,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/label_state"
-                android:textStyle="bold"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="5dp"
@@ -84,8 +84,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/label_data"
-                android:textStyle="bold"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="5dp"
@@ -96,8 +96,8 @@
                 android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="@string/ch1_label"
                 android:gravity="end"
+                android:text="@string/ch1_label"
                 android:textAlignment="gravity"
                 android:textSize="14sp" />
 
@@ -114,8 +114,8 @@
                 android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="@string/ch2_label"
                 android:gravity="end"
+                android:text="@string/ch2_label"
                 android:textAlignment="gravity"
                 android:textSize="14sp" />
 
@@ -132,8 +132,8 @@
                 android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="@string/ch3_label"
                 android:gravity="end"
+                android:text="@string/ch3_label"
                 android:textAlignment="gravity"
                 android:textSize="14sp" />
 
@@ -150,8 +150,8 @@
                 android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="@string/ch4_label"
                 android:gravity="end"
+                android:text="@string/ch4_label"
                 android:textAlignment="gravity"
                 android:textSize="14sp" />
 
@@ -164,6 +164,7 @@
                 android:textSize="14sp" />
 
         </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -187,8 +188,8 @@
                 android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="@string/ch5_label"
                 android:gravity="end"
+                android:text="@string/ch5_label"
                 android:textAlignment="gravity"
                 android:textSize="14sp" />
 
@@ -223,8 +224,8 @@
                 android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="@string/ch7_label"
                 android:gravity="end"
+                android:text="@string/ch7_label"
                 android:textAlignment="gravity"
                 android:textSize="14sp" />
 
@@ -241,8 +242,8 @@
                 android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="@string/ch8_label"
                 android:gravity="end"
+                android:text="@string/ch8_label"
                 android:textAlignment="gravity"
                 android:textSize="14sp" />
 
@@ -255,6 +256,7 @@
                 android:textSize="14sp" />
 
         </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -265,8 +267,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/label_resolution"
-                android:textStyle="bold"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="5dp"
@@ -280,35 +282,36 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/gain_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_gain"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <Spinner
+                android:id="@+id/gain_spinner"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textStyle="normal" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/gain_label"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:text="@string/label_gain"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
-        <Spinner
-            android:id="@+id/gain_spinner"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:drawSelectorOnTop="true"
-            android:textSize="10sp"
-            android:textStyle="normal" />
-
-    </LinearLayout>
 
     <Switch
         android:id="@+id/switch_plots"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="fill_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0"
         android:checked="false"
         android:enabled="false"
         android:text="@string/real_time_plot_label"
@@ -317,15 +320,15 @@
 
     <LinearLayout
         android:id="@+id/linearLayout_chart"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="fill_parent"
+        android:layout_height="0dp"
+        android:layout_weight="2"
         android:orientation="vertical"
         android:visibility="visible">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="1dp"
             android:orientation="horizontal">
 
             <CheckBox
@@ -413,13 +416,12 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="298dp"
-            android:layout_margin="1dp"
+            android:layout_height="match_parent"
             android:orientation="horizontal">
 
             <TextView
                 android:id="@+id/YAxis_title"
-                android:layout_width="wrap_content"
+                android:layout_width="16dp"
                 android:layout_height="match_parent"
                 android:gravity="center_vertical"
                 android:rotation="-90"
@@ -430,33 +432,32 @@
             <com.github.mikephil.charting.charts.LineChart
                 android:id="@+id/layout_chart"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_marginBottom="@dimen/cardview_default_elevation" />
-
+                android:layout_height="match_parent" />
         </LinearLayout>
+    </LinearLayout>
 
-        <LinearLayout
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/XAxis_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="visible">
-
-            <TextView
-                android:id="@+id/XAxis_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="@string/XAxis_label"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
+            android:gravity="center"
+            android:text="@string/XAxis_label"
+            android:textSize="12sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <Button
         android:id="@+id/btn_record"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/record_label" />
+        android:background="@color/olive"
+        android:text="@string/record_label"
+        android:textColor="@color/white" />
 
 </LinearLayout>
