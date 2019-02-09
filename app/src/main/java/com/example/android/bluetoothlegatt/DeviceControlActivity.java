@@ -128,6 +128,7 @@ public class DeviceControlActivity extends Activity {
     private boolean show_ch6 = true;
     private boolean show_ch7 = true;
     private boolean show_ch8 = true;
+    private int enabledCheckboxes = 8;
     private TextView mConnectionState;
     private TextView mCh1;
     private TextView mCh2;
@@ -137,7 +138,7 @@ public class DeviceControlActivity extends Activity {
     private TextView mCh6;
     private TextView mCh7;
     private TextView mCh8;
-    private CheckBox chckbx_ch1;
+    private TextView mXAxis;
     private TextView mDataResolution;
     private String mDeviceName;
     private String mDeviceAddress;
@@ -240,9 +241,11 @@ public class DeviceControlActivity extends Activity {
         public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
             if (!isChecked) {
                 layout_plots.setVisibility(ViewStub.GONE);
+                mXAxis.setVisibility(ViewStub.GONE);
                 plotting = false;
             } else {
                 layout_plots.setVisibility(ViewStub.VISIBLE);
+                mXAxis.setVisibility(ViewStub.VISIBLE);
                 plotting = true;
             }
         }
@@ -733,6 +736,8 @@ public class DeviceControlActivity extends Activity {
         });
         layout_plots = findViewById(R.id.linearLayout_chart);
         layout_plots.setVisibility(ViewStub.GONE);
+        mXAxis = findViewById(R.id.XAxis_title);
+        mXAxis.setVisibility(ViewStub.GONE);
         btn_record.setOnClickListener(btnRecordOnClickListener);
         switch_plots.setOnCheckedChangeListener(switchPlotsOnCheckedChangeListener);
 
@@ -759,56 +764,111 @@ public class DeviceControlActivity extends Activity {
         mCh6.setTextColor(ch6_color);
         mCh7.setTextColor(ch7_color);
         mCh8.setTextColor(ch8_color);
-        chckbx_ch1 = findViewById(R.id.checkBox_ch1);
-        CheckBox chckbx_ch2 = findViewById(R.id.checkBox_ch2);
-        CheckBox chckbx_ch3 = findViewById(R.id.checkBox_ch3);
-        CheckBox chckbx_ch4 = findViewById(R.id.checkBox_ch4);
-        CheckBox chckbx_ch5 = findViewById(R.id.checkBox_ch5);
-        CheckBox chckbx_ch6 = findViewById(R.id.checkBox_ch6);
-        CheckBox chckbx_ch7 = findViewById(R.id.checkBox_ch7);
-        CheckBox chckbx_ch8 = findViewById(R.id.checkBox_ch8);
+        final CheckBox chckbx_ch1 = findViewById(R.id.checkBox_ch1);
+        final CheckBox chckbx_ch2 = findViewById(R.id.checkBox_ch2);
+        final CheckBox chckbx_ch3 = findViewById(R.id.checkBox_ch3);
+        final CheckBox chckbx_ch4 = findViewById(R.id.checkBox_ch4);
+        final CheckBox chckbx_ch5 = findViewById(R.id.checkBox_ch5);
+        final CheckBox chckbx_ch6 = findViewById(R.id.checkBox_ch6);
+        final CheckBox chckbx_ch7 = findViewById(R.id.checkBox_ch7);
+        final CheckBox chckbx_ch8 = findViewById(R.id.checkBox_ch8);
         chckbx_ch1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 show_ch1 = isChecked;
+                if (!isChecked) enabledCheckboxes--;
+                else enabledCheckboxes++;
+                if (enabledCheckboxes == 0) {
+                    chckbx_ch1.setChecked(true);
+                    show_ch1 = true;
+                    enabledCheckboxes++;
+                }
             }
         });
         chckbx_ch2.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 show_ch2 = isChecked;
+                if (!isChecked) enabledCheckboxes--;
+                else enabledCheckboxes++;
+                if (enabledCheckboxes == 0) {
+                    chckbx_ch2.setChecked(true);
+                    show_ch2 = true;
+                    enabledCheckboxes++;
+                }
             }
         });
         chckbx_ch3.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 show_ch3 = isChecked;
+                if (!isChecked) enabledCheckboxes--;
+                else enabledCheckboxes++;
+                if (enabledCheckboxes == 0) {
+                    chckbx_ch3.setChecked(true);
+                    show_ch3 = true;
+                    enabledCheckboxes++;
+                }
             }
         });
         chckbx_ch4.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 show_ch4 = isChecked;
+                if (!isChecked) enabledCheckboxes--;
+                else enabledCheckboxes++;
+                if (enabledCheckboxes == 0) {
+                    chckbx_ch4.setChecked(true);
+                    show_ch4 = true;
+                    enabledCheckboxes++;
+                }
             }
         });
         chckbx_ch5.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 show_ch5 = isChecked;
+                if (!isChecked) enabledCheckboxes--;
+                else enabledCheckboxes++;
+                if (enabledCheckboxes == 0) {
+                    chckbx_ch5.setChecked(true);
+                    show_ch5 = true;
+                    enabledCheckboxes++;
+                }
             }
         });
         chckbx_ch6.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 show_ch6 = isChecked;
+                if (!isChecked) enabledCheckboxes--;
+                else enabledCheckboxes++;
+                if (enabledCheckboxes == 0) {
+                    chckbx_ch6.setChecked(true);
+                    show_ch6 = true;
+                    enabledCheckboxes++;
+                }
             }
         });
         chckbx_ch7.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 show_ch7 = isChecked;
+                if (!isChecked) enabledCheckboxes--;
+                else enabledCheckboxes++;
+                if (enabledCheckboxes == 0) {
+                    chckbx_ch7.setChecked(true);
+                    show_ch7 = true;
+                    enabledCheckboxes++;
+                }
             }
         });
         chckbx_ch8.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 show_ch8 = isChecked;
+                if (!isChecked) enabledCheckboxes--;
+                else enabledCheckboxes++;
+                if (enabledCheckboxes == 0) {
+                    chckbx_ch8.setChecked(true);
+                    show_ch8 = true;
+                    enabledCheckboxes++;
+                }
             }
         });
         mDataResolution = findViewById(R.id.resolution_value);
-//        getActionBar().setDisplayHomeAsUpEnabled(false);
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
         bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
         setChart();
