@@ -19,6 +19,7 @@ out/
 /*/build/intermediates/
 /*/build/generated/
 /*/build/outputs/logs/
+/app/build/outputs/apk/debug/output.json
 
 # Local configuration file (sdk path, etc)
 local.properties
