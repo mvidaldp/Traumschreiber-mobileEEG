@@ -1,7 +1,7 @@
 ## Android app for EEG data recording and visualization with the Traumschreiber BLE device
 <div><img title="Traumschreiber EEG BLE device (front)" align="left" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/traumschreiber.jpg" alt="Traumschreiber EEG BLE device (front)" height="400">
 <img title="Traumschreiber EEG BLE device (back)" align="left" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/traumschreiber_back.jpg" alt="Traumschreiber EEG BLE device (back)" height="400">
-</div><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p>
+</div><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p><p>&nbsp</p>
 
 - Device site: https://www.traumschreiber.uni-osnabrueck.de/
 - Original Python code for the device: https://github.com/pnieters/tflow_edge/
