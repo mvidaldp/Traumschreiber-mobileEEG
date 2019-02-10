@@ -23,7 +23,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewStub;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
@@ -76,21 +75,11 @@ public class DeviceControlActivity extends Activity {
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
     private final static String TAG = DeviceControlActivity.class.getSimpleName();
     private final Handler handler = new Handler();
-    private double freq;
-    private String key = "";
-    private float res_time;
-    private float res_freq;
     private final List<Float> dp_received = new ArrayList<>();
-    private Timer timer;
-    private Timer timer2;
-    private TimerTask timerTask;
-    private TimerTask timerTask2;
-    private TimerTask timerTask3;
     private final List<ImmutablePair<Integer, Integer>> keys = new ArrayList<>();
     private final List<ImmutablePair<String, Double>> notes = new ArrayList<>();
     private final List<ImmutablePair<String, Double>> stimuli_data = new ArrayList<>();
     private final List<Float> s_times = new ArrayList<>();
-    private MediaPlayer mMediaPlayer = new MediaPlayer();
     // constants
     private final int NKEYS = 12;
     private final int MINOCTAVE = 4;
@@ -104,7 +93,6 @@ public class DeviceControlActivity extends Activity {
     private final int DPS_AVG_CNT = 20;
     private final String TONES_PATH = Environment.getExternalStorageDirectory().getPath() + "/Tones/";
     private final ArrayList<Entry> lineEntries1 = new ArrayList<>();
-    private int cnt = 0;
     private final ArrayList<Entry> lineEntries2 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries3 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries4 = new ArrayList<>();
@@ -112,6 +100,17 @@ public class DeviceControlActivity extends Activity {
     private final ArrayList<Entry> lineEntries6 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries7 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries8 = new ArrayList<>();
+    private double freq;
+    private String key = "";
+    private float res_time;
+    private float res_freq;
+    private Timer timer;
+    private Timer timer2;
+    private TimerTask timerTask;
+    private TimerTask timerTask2;
+    private TimerTask timerTask3;
+    private MediaPlayer mMediaPlayer = new MediaPlayer();
+    private int cnt = 0;
     private int ch1_color;
     private int ch2_color;
     private int ch3_color;
@@ -177,6 +176,20 @@ public class DeviceControlActivity extends Activity {
     private View layout_plots;
     private boolean recording = false;
     private boolean plotting = false;
+    private final CompoundButton.OnCheckedChangeListener switchPlotsOnCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            if (!isChecked) {
+                layout_plots.setVisibility(ViewStub.GONE);
+                mXAxis.setVisibility(ViewStub.GONE);
+                plotting = false;
+            } else {
+                layout_plots.setVisibility(ViewStub.VISIBLE);
+                mXAxis.setVisibility(ViewStub.VISIBLE);
+                plotting = true;
+            }
+        }
+    };
     private boolean playing = false;
     private List<float[]> main_data;
     private float data_cnt = 0;
@@ -188,6 +201,19 @@ public class DeviceControlActivity extends Activity {
     private String session_label;
     private long start_timestamp;
     private long end_timestamp;
+    private final View.OnClickListener btnRecordOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (!recording) {
+                notes.clear();
+                keys.clear();
+                s_times.clear();
+                keys.addAll(generateKeys());
+                notes.addAll(keysToNotes(keys));
+                askForLabel();
+            } else endTrial();
+        }
+    };
     private String selected_gain;
     // Handles various events fired by the Service.
     // ACTION_GATT_CONNECTED: connected to a GATT server.
@@ -238,33 +264,15 @@ public class DeviceControlActivity extends Activity {
             }
         }
     };
-    private final View.OnClickListener btnRecordOnClickListener = new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            if (!recording) {
-                notes.clear();
-                keys.clear();
-                s_times.clear();
-                keys.addAll(generateKeys());
-                notes.addAll(keysToNotes(keys));
-                askForLabel();
-            } else endTrial();
-        }
-    };
-    private final CompoundButton.OnCheckedChangeListener switchPlotsOnCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
-        @Override
-        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-            if (!isChecked) {
-                layout_plots.setVisibility(ViewStub.GONE);
-                mXAxis.setVisibility(ViewStub.GONE);
-                plotting = false;
-            } else {
-                layout_plots.setVisibility(ViewStub.VISIBLE);
-                mXAxis.setVisibility(ViewStub.VISIBLE);
-                plotting = true;
-            }
-        }
-    };
+
+    private static IntentFilter makeGattUpdateIntentFilter() {
+        final IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_CONNECTED);
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_DISCONNECTED);
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED);
+        intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
+        return intentFilter;
+    }
 
     private void enableCheckboxes() {
         chckbx_ch1.setEnabled(true);
@@ -286,15 +294,6 @@ public class DeviceControlActivity extends Activity {
         chckbx_ch6.setEnabled(false);
         chckbx_ch7.setEnabled(false);
         chckbx_ch8.setEnabled(false);
-    }
-
-    private static IntentFilter makeGattUpdateIntentFilter() {
-        final IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(BluetoothLeService.ACTION_GATT_CONNECTED);
-        intentFilter.addAction(BluetoothLeService.ACTION_GATT_DISCONNECTED);
-        intentFilter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED);
-        intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
-        return intentFilter;
     }
 
     @Override
