@@ -11,10 +11,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.graphics.Color;
-import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
 import android.os.IBinder;
 import android.text.InputType;
 import android.util.Log;
@@ -34,7 +32,6 @@ import android.widget.Toast;
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
-import com.github.mikephil.charting.components.LimitLine;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
@@ -49,15 +46,11 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.UUID;
 
 import androidx.annotation.NonNull;
@@ -74,24 +67,14 @@ public class DeviceControlActivity extends Activity {
     public static final String EXTRAS_DEVICE_NAME = "DEVICE_NAME";
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
     private final static String TAG = DeviceControlActivity.class.getSimpleName();
-    private final Handler handler = new Handler();
     private final List<Float> dp_received = new ArrayList<>();
     private final List<ImmutablePair<Integer, Integer>> keys = new ArrayList<>();
     private final List<ImmutablePair<String, Double>> notes = new ArrayList<>();
     private final List<ImmutablePair<String, Double>> stimuli_data = new ArrayList<>();
     private final List<Float> s_times = new ArrayList<>();
     // constants
-    private final int NKEYS = 12;
-    private final int MINOCTAVE = 4;
-    private final int MAXOCTAVE = 6;
-    private final int STIMULUS_START = 4000;
-    private final int STIMULUS_LENGTH = 1000;
-    private final int PERIOD = 3000;  // milliseconds
-    private final int SILENCE_START = 5500;
-    private final int TUNING = 440;
     private final float DATAPOINT_TIME = 4.5f;
     private final int DPS_AVG_CNT = 20;
-    private final String TONES_PATH = Environment.getExternalStorageDirectory().getPath() + "/Tones/";
     private final ArrayList<Entry> lineEntries1 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries2 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries3 = new ArrayList<>();
@@ -100,16 +83,8 @@ public class DeviceControlActivity extends Activity {
     private final ArrayList<Entry> lineEntries6 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries7 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries8 = new ArrayList<>();
-    private double freq;
-    private String key = "";
     private float res_time;
     private float res_freq;
-    private Timer timer;
-    private Timer timer2;
-    private TimerTask timerTask;
-    private TimerTask timerTask2;
-    private TimerTask timerTask3;
-    private MediaPlayer mMediaPlayer = new MediaPlayer();
     private int cnt = 0;
     private int ch1_color;
     private int ch2_color;
@@ -204,14 +179,8 @@ public class DeviceControlActivity extends Activity {
     private final View.OnClickListener btnRecordOnClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            if (!recording) {
-                notes.clear();
-                keys.clear();
-                s_times.clear();
-                keys.addAll(generateKeys());
-                notes.addAll(keysToNotes(keys));
-                askForLabel();
-            } else endTrial();
+            if (!recording) askForLabel();
+            else endTrial();
         }
     };
     private String selected_gain;
@@ -306,192 +275,6 @@ public class DeviceControlActivity extends Activity {
         }
     }
 
-    private List<ImmutablePair<Integer, Integer>> generateKeys() {
-        List<ImmutablePair<Integer, Integer>> new_keys = new ArrayList<>();
-        for (int o = MINOCTAVE; o <= MAXOCTAVE; o++) {
-            for (int k = 0; k < NKEYS; k++) {
-                ImmutablePair<Integer, Integer> pair = new ImmutablePair<>(k, o);
-                new_keys.add(pair);
-            }
-        }
-        // randomize list
-        Collections.shuffle(new_keys);
-        return new_keys;
-    }
-
-    private List<ImmutablePair<String, Double>> keysToNotes(List<ImmutablePair<Integer, Integer>> keysList) {
-        char letter = ' ';
-        char accidental;
-        String note;
-        List<ImmutablePair<String, Double>> notesFreqs = new ArrayList<>();
-        for (ImmutablePair<Integer, Integer> pair : keysList) {
-            int key = pair.getKey();  // e.g note from 0 to 11
-            int octave = pair.getValue(); // e.g octave from 2 to 5
-            accidental = ' ';
-            switch (key) {
-                case 0:
-                    letter = 'C';
-                    break;
-                case 1:
-                    letter = 'C';
-                    accidental = '#';
-                    break;
-                case 2:
-                    letter = 'D';
-                    break;
-                case 3:
-                    letter = 'D';
-                    accidental = '#';
-                    break;
-                case 4:
-                    letter = 'E';
-                    break;
-                case 5:
-                    letter = 'F';
-                    break;
-                case 6:
-                    letter = 'F';
-                    accidental = '#';
-                    break;
-                case 7:
-                    letter = 'G';
-                    break;
-                case 8:
-                    letter = 'G';
-                    accidental = '#';
-                    break;
-                case 9:
-                    letter = 'A';
-                    break;
-                case 10:
-                    letter = 'A';
-                    accidental = '#';
-                    break;
-                case 11:
-                    letter = 'B';
-                    break;
-            }
-            if (accidental != ' ') note = letter + "" + accidental + "" + octave;  // e.g. C#5
-            else note = letter + "" + octave; // e.g. C5
-            NoteToFrequency mNotetoFreq = new NoteToFrequency(letter, accidental, octave, TUNING);
-            double frequency = mNotetoFreq.frequency;
-            ImmutablePair<String, Double> noteFreqPair = new ImmutablePair<>(note, frequency);
-            notesFreqs.add(noteFreqPair);
-        }
-        return notesFreqs;
-    }
-
-    private void startTimer() {
-        //set a new Timer
-        timer = new Timer();
-        //initialize the TimerTask's job
-        initializeTimerTask();
-        // schedule the timer, the stimulus presence will repeat every 3 seconds
-        timer.schedule(timerTask, STIMULUS_START, PERIOD);
-        // the silence (stop MediaPlayer) starts after 5.5 seconds, repeat every 3 seconds
-        // done this way to avoid "click" sounds at the end of the presentation
-        timer.schedule(timerTask2, SILENCE_START, PERIOD);
-    }
-
-    private void initializeTimerTask2() {
-        timerTask3 = new TimerTask() {
-            public void run() {
-                handler.post(new Runnable() {
-                    public void run() {
-                        playing = false;
-                        timer2.cancel();
-                        timer2.purge();
-                    }
-                });
-            }
-        };
-    }
-
-    private void initializeTimerTask() {
-        timerTask = new TimerTask() {
-            public void run() {
-                handler.post(new Runnable() {
-                    public void run() {
-                        if (!notes.isEmpty()) {
-                            mMediaPlayer = new MediaPlayer();
-                            ImmutablePair<String, Double> note = notes.get(0);
-                            key = note.getKey();  // same as .getLeft()
-                            freq = note.getValue();
-                            String solfa = "";
-                            switch (key.charAt(0)) {
-                                case 'A':
-                                    solfa = "La";
-                                    break;
-                                case 'B':
-                                    solfa = "Si";
-                                    break;
-                                case 'C':
-                                    solfa = "Do";
-                                    break;
-                                case 'D':
-                                    solfa = "Re";
-                                    break;
-                                case 'E':
-                                    solfa = "Mi";
-                                    break;
-                                case 'F':
-                                    solfa = "Fa";
-                                    break;
-                                case 'G':
-                                    solfa = "Sol";
-                                    break;
-                            }
-                            try {
-                                mMediaPlayer.setDataSource(TONES_PATH + key + ".wav");
-                                mMediaPlayer.prepare();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                            float s_appearance = System.currentTimeMillis() - start_watch;
-                            s_times.add(s_appearance);
-                            String key_n_freq = key + " = " + freq + "Hz";
-                            XAxis bottom = mChart.getXAxis();
-                            LimitLine ll_start = new LimitLine(s_appearance, key_n_freq);
-                            float silence_pos = s_appearance + STIMULUS_LENGTH;
-                            LimitLine ll_stop = new LimitLine(silence_pos, "Silence");
-                            ll_start.setLineColor(Color.GREEN);
-                            ll_start.setTextColor(Color.GREEN);
-                            ll_stop.setLineColor(Color.RED);
-                            ll_stop.setTextColor(Color.RED);
-                            bottom.addLimitLine(ll_start);
-                            bottom.addLimitLine(ll_stop);
-                            mChart.notifyDataSetChanged();
-                            mMediaPlayer.start();
-                            playing = true;
-                            initializeTimerTask2();
-                            timer2 = new Timer();
-                            timer2.schedule(timerTask3, STIMULUS_LENGTH);  // run only once
-                            notes.remove(0);
-                            Toast.makeText(
-                                    getApplicationContext(),
-                                    solfa + "/" + key_n_freq,
-                                    Toast.LENGTH_LONG
-                            ).show();
-                        } else {
-                            timer.cancel();
-                            endTrial();
-                        }
-                    }
-                });
-            }
-        };
-        timerTask2 = new TimerTask() {
-            public void run() {
-                handler.post(new Runnable() {
-                    public void run() {
-                        mMediaPlayer.release();
-                        mMediaPlayer = null;
-                    }
-                });
-            }
-        };
-    }
-
     private void clearUI() {
         mCh1.setText("");
         mCh2.setText("");
@@ -519,7 +302,6 @@ public class DeviceControlActivity extends Activity {
 
     @SuppressLint("SimpleDateFormat")
     private void endTrial() {
-        timer.cancel();
         recording = false;
         end_time = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
         long stop_watch = System.currentTimeMillis();
@@ -549,7 +331,6 @@ public class DeviceControlActivity extends Activity {
                                 // Use a new tread as this can take a while
                                 // onResume we start our timer so it can start when the app comes from the background
                                 startTrial();
-                                startTimer();
                             }
                         }).show();
     }
@@ -609,9 +390,6 @@ public class DeviceControlActivity extends Activity {
             f_microV[i++] = (f != null ? f : Float.NaN); // Or whatever default you want
         }
         main_data.add(f_microV);
-        ImmutablePair<String, Double> stimuli = new ImmutablePair<>(key, freq);
-        if (!playing) stimuli = new ImmutablePair<>("silence", 0.0);
-        stimuli_data.add(stimuli);
     }
 
     private void saveSession() {
@@ -622,12 +400,11 @@ public class DeviceControlActivity extends Activity {
         final String top_header = "Session ID,Session Tag,Date,Shape (rows x columns)," +
                 "Duration (ms),Starting Time,Ending Time,Resolution (ms),Resolution (Hz)," +
                 "Unit Measure,Starting Timestamp,Ending Timestamp";
-        final String dp_header = "Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8,Key,Freq";
+        final String dp_header = "Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8";
         final UUID id = UUID.randomUUID();
         @SuppressLint("SimpleDateFormat") final String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
         final char delimiter = ',';
         final char break_line = '\n';
-        final Handler handler = new Handler();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -668,13 +445,6 @@ public class DeviceControlActivity extends Activity {
                     fileWriter.append(Long.toString(end_timestamp));
                     fileWriter.append(delimiter);
                     fileWriter.append(break_line);
-                    fileWriter.append("Stimuli appearance");
-                    fileWriter.append(delimiter);
-                    for (float time : s_times) {
-                        fileWriter.append(String.valueOf(time));
-                        fileWriter.append(delimiter);
-                    }
-                    fileWriter.append(break_line);
                     fileWriter.append(dp_header);
                     fileWriter.append(break_line);
                     for (int i = 0; i < rows; i++) {
@@ -684,10 +454,6 @@ public class DeviceControlActivity extends Activity {
                             fileWriter.append(String.valueOf(main_data.get(i)[j]));
                             fileWriter.append(delimiter);
                         }
-                        fileWriter.append(stimuli_data.get(i).getLeft());
-                        fileWriter.append(delimiter);
-                        fileWriter.append(stimuli_data.get(i).getRight().toString());
-                        fileWriter.append(delimiter);
                         fileWriter.append(break_line);
                     }
                     fileWriter.flush();
