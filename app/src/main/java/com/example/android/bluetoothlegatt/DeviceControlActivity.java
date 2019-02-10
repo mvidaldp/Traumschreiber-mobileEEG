@@ -627,7 +627,6 @@ public class DeviceControlActivity extends Activity {
         @SuppressLint("SimpleDateFormat") final String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
         final char delimiter = ',';
         final char break_line = '\n';
-        final Handler handler = new Handler();
         new Thread(new Runnable() {
             @Override
             public void run() {
