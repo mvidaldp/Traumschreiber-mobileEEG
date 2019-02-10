@@ -138,8 +138,17 @@ public class DeviceControlActivity extends Activity {
     private TextView mCh6;
     private TextView mCh7;
     private TextView mCh8;
+    private CheckBox chckbx_ch1;
+    private CheckBox chckbx_ch2;
+    private CheckBox chckbx_ch3;
+    private CheckBox chckbx_ch4;
+    private CheckBox chckbx_ch5;
+    private CheckBox chckbx_ch6;
+    private CheckBox chckbx_ch7;
+    private CheckBox chckbx_ch8;
     private TextView mXAxis;
     private TextView mDataResolution;
+    private Spinner gain_spinner;
     private String mDeviceName;
     private String mDeviceAddress;
     private BluetoothLeService mBluetoothLeService;
@@ -179,7 +188,7 @@ public class DeviceControlActivity extends Activity {
     private String session_label;
     private long start_timestamp;
     private long end_timestamp;
-    private String selected_gain = "1";  // default gain
+    private String selected_gain;
     // Handles various events fired by the Service.
     // ACTION_GATT_CONNECTED: connected to a GATT server.
     // ACTION_GATT_DISCONNECTED: disconnected from a GATT server.
@@ -200,6 +209,9 @@ public class DeviceControlActivity extends Activity {
                 invalidateOptionsMenu();
                 clearUI();
                 switch_plots.setEnabled(false);
+                btn_record.setEnabled(false);
+                gain_spinner.setEnabled(false);
+                disableCheckboxes();
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
                 // Show all the supported services and characteristics on the user interface.
                 if (mNotifyCharacteristic == null) {
@@ -208,6 +220,9 @@ public class DeviceControlActivity extends Activity {
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
                 data_cnt++;
                 switch_plots.setEnabled(true);
+                btn_record.setEnabled(true);
+                gain_spinner.setEnabled(true);
+                enableCheckboxes();
                 List<Float> microV = transData(intent.getIntArrayExtra(BluetoothLeService.EXTRA_DATA));
                 displayData(microV);
                 if (plotting) plotData(microV);
@@ -250,6 +265,28 @@ public class DeviceControlActivity extends Activity {
             }
         }
     };
+
+    private void enableCheckboxes() {
+        chckbx_ch1.setEnabled(true);
+        chckbx_ch2.setEnabled(true);
+        chckbx_ch3.setEnabled(true);
+        chckbx_ch4.setEnabled(true);
+        chckbx_ch5.setEnabled(true);
+        chckbx_ch6.setEnabled(true);
+        chckbx_ch7.setEnabled(true);
+        chckbx_ch8.setEnabled(true);
+    }
+
+    private void disableCheckboxes() {
+        chckbx_ch1.setEnabled(false);
+        chckbx_ch2.setEnabled(false);
+        chckbx_ch3.setEnabled(false);
+        chckbx_ch4.setEnabled(false);
+        chckbx_ch5.setEnabled(false);
+        chckbx_ch6.setEnabled(false);
+        chckbx_ch7.setEnabled(false);
+        chckbx_ch8.setEnabled(false);
+    }
 
     private static IntentFilter makeGattUpdateIntentFilter() {
         final IntentFilter intentFilter = new IntentFilter();
@@ -416,7 +453,8 @@ public class DeviceControlActivity extends Activity {
                             String key_n_freq = key + " = " + freq + "Hz";
                             XAxis bottom = mChart.getXAxis();
                             LimitLine ll_start = new LimitLine(s_appearance, key_n_freq);
-                            LimitLine ll_stop = new LimitLine(s_appearance + 1, "Silence");
+                            float silence_pos = s_appearance + STIMULUS_LENGTH;
+                            LimitLine ll_stop = new LimitLine(silence_pos, "Silence");
                             ll_start.setLineColor(Color.GREEN);
                             ll_start.setTextColor(Color.GREEN);
                             ll_stop.setLineColor(Color.RED);
@@ -581,79 +619,85 @@ public class DeviceControlActivity extends Activity {
         saveSession("Default");
     }
 
-    private void saveSession(String tag) {
-        String top_header = "Session ID,Session Tag,Date,Shape (rows x columns)," +
+    private void saveSession(final String tag) {
+        final String top_header = "Session ID,Session Tag,Date,Shape (rows x columns)," +
                 "Duration (ms),Starting Time,Ending Time,Resolution (ms),Resolution (Hz)," +
                 "Unit Measure,Starting Timestamp,Ending Timestamp";
-        String dp_header = "Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8,Key,Freq";
-        UUID id = UUID.randomUUID();
-        @SuppressLint("SimpleDateFormat") String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
-        char delimiter = ',';
-        char break_line = '\n';
-        try {
-            File formatted = new File(Environment.getExternalStoragePublicDirectory(
-                    Environment.DIRECTORY_DOWNLOADS),
-                    date + ".csv");
-            // if file doesn't exists, then create it
-            if (!formatted.exists()) //noinspection ResultOfMethodCallIgnored
-                formatted.createNewFile();
-            FileWriter fileWriter = new FileWriter(formatted);
-            int rows = main_data.size();
-            int cols = main_data.get(0).length;
-            fileWriter.append(top_header);
-            fileWriter.append(break_line);
-            fileWriter.append(id.toString());
-            fileWriter.append(delimiter);
-            fileWriter.append(tag);
-            fileWriter.append(delimiter);
-            fileWriter.append(date);
-            fileWriter.append(delimiter);
-            fileWriter.append(String.valueOf(rows)).append("x").append(String.valueOf(cols));
-            fileWriter.append(delimiter);
-            fileWriter.append(recording_time);
-            fileWriter.append(delimiter);
-            fileWriter.append(start_time);
-            fileWriter.append(delimiter);
-            fileWriter.append(end_time);
-            fileWriter.append(delimiter);
-            fileWriter.append(String.valueOf(res_time));
-            fileWriter.append(delimiter);
-            fileWriter.append(String.valueOf(res_freq));
-            fileWriter.append(delimiter);
-            fileWriter.append("µV");
-            fileWriter.append(delimiter);
-            fileWriter.append(Long.toString(start_timestamp));
-            fileWriter.append(delimiter);
-            fileWriter.append(Long.toString(end_timestamp));
-            fileWriter.append(delimiter);
-            fileWriter.append(break_line);
-            fileWriter.append("Stimuli appearance");
-            fileWriter.append(delimiter);
-            for (float time : s_times) {
-                fileWriter.append(String.valueOf(time));
-                fileWriter.append(delimiter);
-            }
-            fileWriter.append(break_line);
-            fileWriter.append(dp_header);
-            fileWriter.append(break_line);
-            for (int i = 0; i < rows; i++) {
-                fileWriter.append(String.valueOf(dp_received.get(i)));
-                fileWriter.append(delimiter);
-                for (int j = 0; j < cols; j++) {
-                    fileWriter.append(String.valueOf(main_data.get(i)[j]));
+        final String dp_header = "Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8,Key,Freq";
+        final UUID id = UUID.randomUUID();
+        @SuppressLint("SimpleDateFormat") final String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
+        final char delimiter = ',';
+        final char break_line = '\n';
+        final Handler handler = new Handler();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    File formatted = new File(Environment.getExternalStoragePublicDirectory(
+                            Environment.DIRECTORY_DOWNLOADS),
+                            date + ".csv");
+                    // if file doesn't exists, then create it
+                    if (!formatted.exists()) //noinspection ResultOfMethodCallIgnored
+                        formatted.createNewFile();
+                    FileWriter fileWriter = new FileWriter(formatted);
+                    int rows = main_data.size();
+                    int cols = main_data.get(0).length;
+                    fileWriter.append(top_header);
+                    fileWriter.append(break_line);
+                    fileWriter.append(id.toString());
                     fileWriter.append(delimiter);
+                    fileWriter.append(tag);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(date);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(String.valueOf(rows)).append("x").append(String.valueOf(cols));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(recording_time);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(start_time);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(end_time);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(String.valueOf(res_time));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(String.valueOf(res_freq));
+                    fileWriter.append(delimiter);
+                    fileWriter.append("µV");
+                    fileWriter.append(delimiter);
+                    fileWriter.append(Long.toString(start_timestamp));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(Long.toString(end_timestamp));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(break_line);
+                    fileWriter.append("Stimuli appearance");
+                    fileWriter.append(delimiter);
+                    for (float time : s_times) {
+                        fileWriter.append(String.valueOf(time));
+                        fileWriter.append(delimiter);
+                    }
+                    fileWriter.append(break_line);
+                    fileWriter.append(dp_header);
+                    fileWriter.append(break_line);
+                    for (int i = 0; i < rows; i++) {
+                        fileWriter.append(String.valueOf(dp_received.get(i)));
+                        fileWriter.append(delimiter);
+                        for (int j = 0; j < cols; j++) {
+                            fileWriter.append(String.valueOf(main_data.get(i)[j]));
+                            fileWriter.append(delimiter);
+                        }
+                        fileWriter.append(stimuli_data.get(i).getLeft());
+                        fileWriter.append(delimiter);
+                        fileWriter.append(stimuli_data.get(i).getRight().toString());
+                        fileWriter.append(delimiter);
+                        fileWriter.append(break_line);
+                    }
+                    fileWriter.flush();
+                    fileWriter.close();
+                } catch (Exception e) {
+                    Log.e(TAG, "Error storing the data into a CSV file: " + e);
                 }
-                fileWriter.append(stimuli_data.get(i).getLeft());
-                fileWriter.append(delimiter);
-                fileWriter.append(stimuli_data.get(i).getRight().toString());
-                fileWriter.append(delimiter);
-                fileWriter.append(break_line);
             }
-            fileWriter.flush();
-            fileWriter.close();
-        } catch (Exception e) {
-            Log.e(TAG, "Error storing the data into a CSV file: " + e);
-        }
+        }).start();
     }
 
     @Override
@@ -670,15 +714,10 @@ public class DeviceControlActivity extends Activity {
         ch8_color = ContextCompat.getColor(getApplicationContext(), R.color.black);
         btn_record = findViewById(R.id.btn_record);
         switch_plots = findViewById(R.id.switch_plots);
-        Spinner gain_spinner = findViewById(R.id.gain_spinner);
-        // Create an ArrayAdapter using the string array and a default spinner layout
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
-                R.array.gains, android.R.layout.simple_spinner_item);
-        // Specify the layout to use when the list of choices appears
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        // Apply the adapter to the spinner
-        gain_spinner.setAdapter(adapter);
+        gain_spinner = findViewById(R.id.gain_spinner);
         gain_spinner.setSelection(1);
+        gain_spinner.setEnabled(false);
+        selected_gain = gain_spinner.getSelectedItem().toString();
         gain_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -764,14 +803,14 @@ public class DeviceControlActivity extends Activity {
         mCh6.setTextColor(ch6_color);
         mCh7.setTextColor(ch7_color);
         mCh8.setTextColor(ch8_color);
-        final CheckBox chckbx_ch1 = findViewById(R.id.checkBox_ch1);
-        final CheckBox chckbx_ch2 = findViewById(R.id.checkBox_ch2);
-        final CheckBox chckbx_ch3 = findViewById(R.id.checkBox_ch3);
-        final CheckBox chckbx_ch4 = findViewById(R.id.checkBox_ch4);
-        final CheckBox chckbx_ch5 = findViewById(R.id.checkBox_ch5);
-        final CheckBox chckbx_ch6 = findViewById(R.id.checkBox_ch6);
-        final CheckBox chckbx_ch7 = findViewById(R.id.checkBox_ch7);
-        final CheckBox chckbx_ch8 = findViewById(R.id.checkBox_ch8);
+        chckbx_ch1 = findViewById(R.id.checkBox_ch1);
+        chckbx_ch2 = findViewById(R.id.checkBox_ch2);
+        chckbx_ch3 = findViewById(R.id.checkBox_ch3);
+        chckbx_ch4 = findViewById(R.id.checkBox_ch4);
+        chckbx_ch5 = findViewById(R.id.checkBox_ch5);
+        chckbx_ch6 = findViewById(R.id.checkBox_ch6);
+        chckbx_ch7 = findViewById(R.id.checkBox_ch7);
+        chckbx_ch8 = findViewById(R.id.checkBox_ch8);
         chckbx_ch1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 show_ch1 = isChecked;
@@ -916,8 +955,6 @@ public class DeviceControlActivity extends Activity {
         leftAxis.setLabelCount(13, true); // from -35 to 35, a label each 5 microV
         leftAxis.setDrawGridLines(true);
         leftAxis.setGridColor(Color.WHITE);
-        // TODO: Make stimuli start and stop vertical lines appear in real-time
-        // TODO: Block the last checkbox to prevent empty plot and app forceclose
         // disable the y right axis
         YAxis rightAxis = mChart.getAxisRight();
         rightAxis.setEnabled(false);
@@ -1146,10 +1183,7 @@ public class DeviceControlActivity extends Activity {
                     final int charaProp = gattCharacteristic.getProperties();
                     if (((charaProp & BluetoothGattCharacteristic.PROPERTY_WRITE) |
                             (charaProp & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) > 0) {
-                        // writing characteristic functions
-                        BluetoothGattCharacteristic mWriteCharacteristic = gattCharacteristic;
-//                        final byte[] stored = mWriteCharacteristic.getValue();
-                        // gain-> {0.5:0b111, 1:0b000, 2:0b001, 4:0b010, 8:0b011, 16:0b100, 32:0b101,64:0b110}
+                        // gain-> {0.5:0b111, 1:0b000, 2:0b001, 4:0b010, 8:0b011, 16:0b100, 32:0b101, 64:0b110}
                         final byte[] newValue = new byte[6];
                         switch (selected_gain) {
                             case "0.5":
@@ -1177,10 +1211,13 @@ public class DeviceControlActivity extends Activity {
                                 newValue[4] = 0b110;
                                 break;
                         }
-                        mWriteCharacteristic.setValue(newValue);
-                        mBluetoothLeService.writeCharacteristic(mWriteCharacteristic);
-                        mBluetoothLeService.disconnect();
-                        mBluetoothLeService.connect(mDeviceAddress);
+                        gattCharacteristic.setValue(newValue);
+                        mBluetoothLeService.writeCharacteristic(gattCharacteristic);
+                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
+                            mNotifyCharacteristic = gattCharacteristic;
+                            mBluetoothLeService.setCharacteristicNotification(
+                                    gattCharacteristic, true);
+                        }
                     }
                 }
             }
