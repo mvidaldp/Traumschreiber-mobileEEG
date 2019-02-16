@@ -40,7 +40,6 @@ import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
-import com.github.mikephil.charting.utils.ColorTemplate;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
@@ -74,7 +73,9 @@ public class DeviceControlActivity extends Activity {
     private final List<Float> s_times = new ArrayList<>();
     // constants
     private final float DATAPOINT_TIME = 4.5f;
-    private final int DPS_AVG_CNT = 20;
+    private final int PLOT_MEMO = 3000;  // max time range in ms (x value) to store on plot
+    private final int DPS_AVG_CNT = 2;
+    private final int MAX_VISIBLE = 500;  // see 500ms at the time on the plot
     private final ArrayList<Entry> lineEntries1 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries2 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries3 = new ArrayList<>();
@@ -184,6 +185,7 @@ public class DeviceControlActivity extends Activity {
         }
     };
     private String selected_gain;
+    private Thread thread;
     // Handles various events fired by the Service.
     // ACTION_GATT_CONNECTED: connected to a GATT server.
     // ACTION_GATT_DISCONNECTED: disconnected from a GATT server.
@@ -270,6 +272,7 @@ public class DeviceControlActivity extends Activity {
         super.onResume();
         registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
         if (mBluetoothLeService != null) {
+            mBluetoothLeService.disconnect();
             final boolean result = mBluetoothLeService.connect(mDeviceAddress);
             Log.d(TAG, "Connect request result=" + result);
         }
@@ -307,7 +310,7 @@ public class DeviceControlActivity extends Activity {
         long stop_watch = System.currentTimeMillis();
         end_timestamp = new Timestamp(stop_watch).getTime();
         recording_time = Long.toString(stop_watch - start_watch);
-        btn_record.setText("Saving EEG session...");
+        btn_record.setText(R.string.save_label);
         if (session_label == null) saveSession();
         else saveSession(session_label);
         session_label = null;
@@ -316,7 +319,7 @@ public class DeviceControlActivity extends Activity {
                 "Your EEG session was successfully stored",
                 Toast.LENGTH_LONG
         ).show();
-        btn_record.setText("Record");
+        btn_record.setText(R.string.record_label);
     }
 
     private void askForLabel() {
@@ -348,12 +351,24 @@ public class DeviceControlActivity extends Activity {
         return data_trans;
     }
 
-    private void plotData(List<Float> current) {
-        // test 0 -> plot all values (this library and/or the smartphone can't handle it)
-//        addEntries(current);
-//         test 1 -> plot only every certain counter
-        if (cnt % DPS_AVG_CNT == 0) addEntries(current);
+    private void plotData(final List<Float> current) {
         cnt++;
+        if (cnt % DPS_AVG_CNT == 0) {
+            if (thread != null) thread.interrupt();
+            final Runnable runnable = new Runnable() {
+                @Override
+                public void run() {
+                    addEntries(current);
+                }
+            };
+            thread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    runOnUiThread(runnable);
+                }
+            });
+            thread.start();
+        }
     }
 
     @SuppressLint("DefaultLocale")
@@ -725,172 +740,154 @@ public class DeviceControlActivity extends Activity {
         rightAxis.setEnabled(false);
         // set the x bottom axis
         XAxis bottomAxis = mChart.getXAxis();
-        bottomAxis.setLabelCount(5, false);
+        bottomAxis.setLabelCount(5, true);
+        bottomAxis.setValueFormatter(new MyXAxisValueFormatter());
         bottomAxis.setPosition(XAxis.XAxisPosition.TOP);
         bottomAxis.setGridColor(Color.WHITE);
         bottomAxis.setTextColor(Color.GRAY);
     }
 
     private void addEntries(List<Float> f) {
-        List<ILineDataSet> datasets = new ArrayList<>(); // for adding multiple plots
+        List<ILineDataSet> datasets = new ArrayList<>();  // for adding multiple plots
         float x = cnt * DATAPOINT_TIME;
-        if (show_ch1) {
-            lineEntries1.add(new Entry(x, f.get(0)));
-            LineDataSet set1 = createSet1(lineEntries1);
-            datasets.add(set1);
-        }
-        if (show_ch2) {
-            lineEntries2.add(new Entry(x, f.get(1)));
-            LineDataSet set2 = createSet2(lineEntries2);
-            datasets.add(set2);
-        }
-        if (show_ch3) {
-            lineEntries3.add(new Entry(x, f.get(2)));
-            LineDataSet set3 = createSet3(lineEntries3);
-            datasets.add(set3);
-        }
-        if (show_ch4) {
-            lineEntries4.add(new Entry(x, f.get(3)));
-            LineDataSet set4 = createSet4(lineEntries4);
-            datasets.add(set4);
-        }
-        if (show_ch5) {
-            lineEntries5.add(new Entry(x, f.get(4)));
-            LineDataSet set5 = createSet5(lineEntries5);
-            datasets.add(set5);
-        }
-        if (show_ch6) {
-            lineEntries6.add(new Entry(x, f.get(5)));
-            LineDataSet set6 = createSet6(lineEntries6);
-            datasets.add(set6);
-        }
-        if (show_ch7) {
-            lineEntries7.add(new Entry(x, f.get(6)));
-            LineDataSet set7 = createSet7(lineEntries7);
-            datasets.add(set7);
-        }
-        if (show_ch8) {
-            lineEntries8.add(new Entry(x, f.get(7)));
-            LineDataSet set8 = createSet8(lineEntries8);
-            datasets.add(set8);
-        }
+        lineEntries1.add(new Entry(x, f.get(0)));
+        LineDataSet set1 = createSet1(lineEntries1, show_ch1);
+        datasets.add(set1);
+        lineEntries2.add(new Entry(x, f.get(1)));
+        LineDataSet set2 = createSet2(lineEntries2, show_ch2);
+        datasets.add(set2);
+        lineEntries3.add(new Entry(x, f.get(2)));
+        LineDataSet set3 = createSet3(lineEntries3, show_ch3);
+        datasets.add(set3);
+        lineEntries4.add(new Entry(x, f.get(3)));
+        LineDataSet set4 = createSet4(lineEntries4, show_ch4);
+        datasets.add(set4);
+        lineEntries5.add(new Entry(x, f.get(4)));
+        LineDataSet set5 = createSet5(lineEntries5, show_ch5);
+        datasets.add(set5);
+        lineEntries6.add(new Entry(x, f.get(5)));
+        LineDataSet set6 = createSet6(lineEntries6, show_ch6);
+        datasets.add(set6);
+        lineEntries7.add(new Entry(x, f.get(6)));
+        LineDataSet set7 = createSet7(lineEntries7, show_ch7);
+        datasets.add(set7);
+        lineEntries8.add(new Entry(x, f.get(7)));
+        LineDataSet set8 = createSet8(lineEntries8, show_ch8);
+        datasets.add(set8);
         LineData linedata = new LineData(datasets);
         linedata.notifyDataChanged();
         mChart.setData(linedata);
         mChart.notifyDataSetChanged();
         // limit the number of visible entries
-        mChart.setVisibleXRangeMaximum(500);  // in this case you always see 1000ms
+        mChart.setVisibleXRangeMaximum(MAX_VISIBLE);
         // move to the latest entry
         mChart.moveViewToX(x);
+        if (x > PLOT_MEMO) {
+            for (int i = 0; i < mChart.getData().getDataSetCount(); i++) {
+                mChart.getData().getDataSetByIndex(i).removeFirst();
+            }
+        }
     }
 
-
-    private LineDataSet createSet1(ArrayList<Entry> le) {
+    private LineDataSet createSet1(ArrayList<Entry> le, boolean show) {
         LineDataSet set1 = new LineDataSet(le, "Ch-1");
         set1.setAxisDependency(YAxis.AxisDependency.LEFT);
         set1.setColor(ch1_color);
-        set1.setCircleColor(Color.WHITE);
+        set1.setDrawCircles(false);
         set1.setLineWidth(1f);
-        set1.setCircleRadius(1f);
-        set1.setFillAlpha(65);
-        set1.setFillColor(ColorTemplate.getHoloBlue());
         set1.setValueTextColor(ch1_color);
+        set1.setVisible(show);
         return set1;
     }
 
-    private LineDataSet createSet2(ArrayList<Entry> le) {
+    private LineDataSet createSet2(ArrayList<Entry> le, boolean show) {
         LineDataSet set2 = new LineDataSet(le, "Ch-2");
         set2.setAxisDependency(YAxis.AxisDependency.LEFT);
         set2.setColor(ch2_color);
-        set2.setCircleColor(Color.WHITE);
+        set2.setDrawCircles(false);
         set2.setLineWidth(1f);
-        set2.setCircleRadius(1f);
-        set2.setFillAlpha(65);
         set2.setValueTextColor(ch2_color);
+        set2.setVisible(show);
         return set2;
     }
 
-    private LineDataSet createSet3(ArrayList<Entry> le) {
+    private LineDataSet createSet3(ArrayList<Entry> le, boolean show) {
         LineDataSet set3 = new LineDataSet(le, "Ch-3");
         set3.setAxisDependency(YAxis.AxisDependency.LEFT);
         set3.setColor(ch3_color);
-        set3.setCircleColor(Color.WHITE);
+        set3.setDrawCircles(false);
         set3.setLineWidth(1f);
-        set3.setCircleRadius(1f);
-        set3.setFillAlpha(65);
         set3.setValueTextColor(ch3_color);
+        set3.setVisible(show);
         return set3;
     }
 
-    private LineDataSet createSet4(ArrayList<Entry> le) {
+    private LineDataSet createSet4(ArrayList<Entry> le, boolean show) {
         LineDataSet set4 = new LineDataSet(le, "Ch-4");
         set4.setAxisDependency(YAxis.AxisDependency.LEFT);
         set4.setColor(ch4_color);
-        set4.setCircleColor(Color.WHITE);
+        set4.setDrawCircles(false);
         set4.setLineWidth(1f);
-        set4.setCircleRadius(1f);
-        set4.setFillAlpha(65);
         set4.setValueTextColor(ch4_color);
+        set4.setVisible(show);
         return set4;
     }
 
-    private LineDataSet createSet5(ArrayList<Entry> le) {
+    private LineDataSet createSet5(ArrayList<Entry> le, boolean show) {
         LineDataSet set5 = new LineDataSet(le, "Ch-5");
         set5.setAxisDependency(YAxis.AxisDependency.LEFT);
         set5.setColor(ch5_color);
-        set5.setCircleColor(Color.WHITE);
+        set5.setDrawCircles(false);
         set5.setLineWidth(1f);
-        set5.setCircleRadius(1f);
-        set5.setFillAlpha(65);
         set5.setValueTextColor(ch5_color);
+        set5.setVisible(show);
         return set5;
     }
 
-    private LineDataSet createSet6(ArrayList<Entry> le) {
+    private LineDataSet createSet6(ArrayList<Entry> le, boolean show) {
         LineDataSet set6 = new LineDataSet(le, "Ch-6");
         set6.setAxisDependency(YAxis.AxisDependency.LEFT);
         set6.setColor(ch6_color);
-        set6.setCircleColor(Color.WHITE);
+        set6.setDrawCircles(false);
         set6.setLineWidth(1f);
-        set6.setCircleRadius(1f);
-        set6.setFillAlpha(65);
         set6.setValueTextColor(ch6_color);
+        set6.setVisible(show);
         return set6;
     }
 
-    private LineDataSet createSet7(ArrayList<Entry> le) {
+    private LineDataSet createSet7(ArrayList<Entry> le, boolean show) {
         LineDataSet set7 = new LineDataSet(le, "Ch-7");
         set7.setAxisDependency(YAxis.AxisDependency.LEFT);
         set7.setColor(ch7_color);
-        set7.setCircleColor(Color.WHITE);
+        set7.setDrawCircles(false);
         set7.setLineWidth(1f);
-        set7.setCircleRadius(1f);
-        set7.setFillAlpha(65);
         set7.setValueTextColor(ch7_color);
+        set7.setVisible(show);
         return set7;
     }
 
-    private LineDataSet createSet8(ArrayList<Entry> le) {
+    private LineDataSet createSet8(ArrayList<Entry> le, boolean show) {
         LineDataSet set8 = new LineDataSet(le, "Ch-8");
         set8.setAxisDependency(YAxis.AxisDependency.LEFT);
         set8.setColor(ch8_color);
-        set8.setCircleColor(Color.WHITE);
+        set8.setDrawCircles(false);
         set8.setLineWidth(1f);
-        set8.setCircleRadius(1f);
-        set8.setFillAlpha(65);
         set8.setValueTextColor(ch8_color);
+        set8.setVisible(show);
         return set8;
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        mBluetoothLeService.disconnect();
         unregisterReceiver(mGattUpdateReceiver);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        mBluetoothLeService.disconnect();
         unbindService(mServiceConnection);
         mBluetoothLeService = null;
     }
