@@ -45,8 +45,9 @@
     <string name="ch8_label">ch8</string>
     <string name="real_time_plot_label">Real-time plot</string>
     <string name="record_label">Record</string>
+    <string name="save_label">Saving EEG session&#8230;</string>
     <string name="ch6_label">ch6</string>
     <string name="YAxis_label">µV</string>
-    <string name="XAxis_label">Time (ms)</string>
+    <string name="XAxis_label">Time (s)</string>
     <string name="traumschreiber_filter_title">Only showing Traumschreiber devices here:</string>
 </resources>
