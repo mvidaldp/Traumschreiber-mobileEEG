@@ -11,6 +11,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.graphics.Color;
+import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Environment;
@@ -81,12 +83,10 @@ public class DeviceControlActivity extends Activity {
     private final List<Float> s_times = new ArrayList<>();
     // constants
     private final int NKEYS = 12;
-    private final int MINOCTAVE = 4;
-    private final int MAXOCTAVE = 6;
     private final int STIMULUS_START = 4000;
-    private final int STIMULUS_LENGTH = 1000;
+    private final int STIMULUS_LENGTH = 500;
     private final int PERIOD = 3000;  // milliseconds
-    private final int SILENCE_START = 5500;
+    private final int SILENCE_START = 5000;
     private final int TUNING = 440;
     private final float DATAPOINT_TIME = 4.5f;
     private final int PLOT_MEMO = 3000;  // max time range in ms (x value) to store on plot
@@ -101,6 +101,28 @@ public class DeviceControlActivity extends Activity {
     private final ArrayList<Entry> lineEntries6 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries7 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries8 = new ArrayList<>();
+    // Code to manage Service lifecycle.
+    private final ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder service) {
+            mBluetoothLeService = ((BluetoothLeService.LocalBinder) service).getService();
+            if (!mBluetoothLeService.initialize()) {
+                Log.e(TAG, "Unable to initialize Bluetooth");
+                finish();
+            } else {
+                mBluetoothLeService.disconnect();
+                mBluetoothLeService.connect(mDeviceAddress);
+            }
+            // Automatically connects to the device upon successful start-up initialization.
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            mBluetoothLeService = null;
+        }
+    };
+    private int selected_key = 0;
+    private int MINOCTAVE = 4;
     private double freq;
     private String key = "";
     private float res_time;
@@ -128,6 +150,7 @@ public class DeviceControlActivity extends Activity {
     private boolean show_ch6 = true;
     private boolean show_ch7 = true;
     private boolean show_ch8 = true;
+    private int MAXOCTAVE = 6;
     private int enabledCheckboxes = 8;
     private TextView mConnectionState;
     private TextView mCh1;
@@ -146,29 +169,20 @@ public class DeviceControlActivity extends Activity {
     private CheckBox chckbx_ch6;
     private CheckBox chckbx_ch7;
     private CheckBox chckbx_ch8;
+    private boolean repeat_stimulus = false;
     private TextView mXAxis;
     private TextView mDataResolution;
     private Spinner gain_spinner;
+    private CheckBox chckbx_repeat;
+    private Spinner spinner_key;
+    private Spinner spinner_min_o;
     private String mDeviceName;
     private String mDeviceAddress;
     private BluetoothLeService mBluetoothLeService;
-    // Code to manage Service lifecycle.
-    private final ServiceConnection mServiceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName componentName, IBinder service) {
-            mBluetoothLeService = ((BluetoothLeService.LocalBinder) service).getService();
-            if (!mBluetoothLeService.initialize()) {
-                Log.e(TAG, "Unable to initialize Bluetooth");
-                finish();
-            } else mBluetoothLeService.connect(mDeviceAddress);
-            // Automatically connects to the device upon successful start-up initialization.
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            mBluetoothLeService = null;
-        }
-    };
+    private Spinner spinner_max_o;
+    private String selected;
+    private float volume_level;
+    private int nPresentations;
     private boolean mConnected = false;
     private BluetoothGattCharacteristic mNotifyCharacteristic;
     private LineChart mChart;
@@ -211,6 +225,7 @@ public class DeviceControlActivity extends Activity {
                 s_times.clear();
                 keys.addAll(generateKeys());
                 notes.addAll(keysToNotes(keys));
+                nPresentations = notes.size();
                 askForLabel();
             } else endTrial();
         }
@@ -309,11 +324,40 @@ public class DeviceControlActivity extends Activity {
         }
     }
 
+    private void showExperimentSettings() {
+        String stimuli_text = "- Stimuli selected: ";
+        int time;
+        if (repeat_stimulus) {
+            time = (STIMULUS_START + NKEYS * MAXOCTAVE * PERIOD) / 1000;
+            selected = spinner_key.getSelectedItem().toString() + MINOCTAVE;
+        } else {
+            time = (STIMULUS_START + NKEYS * (MAXOCTAVE + 1 - MINOCTAVE) * PERIOD) / 1000;
+            selected = "C" + spinner_min_o.getSelectedItem().toString() + "-" + "B" + spinner_max_o.getSelectedItem().toString();
+        }
+        String time_text = "- Time: " + time;
+        Toast.makeText(
+                getApplicationContext(),
+                "EXPERIMENT SETTINGS:\n" + stimuli_text + selected + "\n" + time_text + "s",
+                Toast.LENGTH_LONG
+        ).show();
+
+    }
+
     private List<ImmutablePair<Integer, Integer>> generateKeys() {
         List<ImmutablePair<Integer, Integer>> new_keys = new ArrayList<>();
-        for (int o = MINOCTAVE; o <= MAXOCTAVE; o++) {
+        int min = MINOCTAVE;
+        int max = MAXOCTAVE;
+        if (repeat_stimulus) {
+            min = 1;
+            max = MAXOCTAVE;
+        }
+        for (int o = min; o <= max; o++) {
             for (int k = 0; k < NKEYS; k++) {
-                ImmutablePair<Integer, Integer> pair = new ImmutablePair<>(k, o);
+                ImmutablePair<Integer, Integer> pair;
+                if (!repeat_stimulus)
+                    pair = new ImmutablePair<>(k, o);
+                else
+                    pair = new ImmutablePair<>(selected_key, MINOCTAVE);
                 new_keys.add(pair);
             }
         }
@@ -411,6 +455,7 @@ public class DeviceControlActivity extends Activity {
     }
 
     private void initializeTimerTask() {
+        final AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         timerTask = new TimerTask() {
             public void run() {
                 handler.post(new Runnable() {
@@ -465,6 +510,15 @@ public class DeviceControlActivity extends Activity {
                             bottom.addLimitLine(ll_stop);
                             mChart.notifyDataSetChanged();
                             mMediaPlayer.start();
+                            // This shows -Infinity (0 volume) -> -53.th up to 0dB)
+                            // TODO: Get the actual dB SPL
+                            int streamVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                            volume_level = audioManager.getStreamVolumeDb(AudioManager.STREAM_MUSIC, streamVolume, AudioDeviceInfo.TYPE_WIRED_HEADPHONES);
+//                            Toast.makeText(
+//                                    getApplicationContext(),
+//                                    "Decibels = " + String.valueOf(volume_level),
+//                                    Toast.LENGTH_LONG
+//                            ).show();
                             playing = true;
                             initializeTimerTask2();
                             timer2 = new Timer();
@@ -517,7 +571,15 @@ public class DeviceControlActivity extends Activity {
         start_watch = System.currentTimeMillis();
         start_timestamp = new Timestamp(start_watch).getTime();
         recording = true;
+        toggleExperimentControls(false);
         btn_record.setText("Stop and Store Data");
+    }
+
+    private void toggleExperimentControls(boolean enable) {
+        chckbx_repeat.setEnabled(enable);
+        spinner_key.setEnabled(enable);
+        spinner_min_o.setEnabled(enable);
+        spinner_max_o.setEnabled(enable);
     }
 
     @SuppressLint("SimpleDateFormat")
@@ -537,6 +599,7 @@ public class DeviceControlActivity extends Activity {
                 "Your EEG session was successfully stored",
                 Toast.LENGTH_LONG
         ).show();
+        toggleExperimentControls(true);
         btn_record.setText(R.string.record_label);
     }
 
@@ -634,7 +697,7 @@ public class DeviceControlActivity extends Activity {
     }
 
     private void saveSession(final String tag) {
-        final String top_header = "Session ID,Session Tag,Date,Shape (rows x columns)," +
+        final String top_header = "Session ID,Session Tag,Date,Stimuli,Presentations,Volume,Shape (rows x columns)," +
                 "Duration (ms),Starting Time,Ending Time,Resolution (ms),Resolution (Hz)," +
                 "Unit Measure,Starting Timestamp,Ending Timestamp";
         final String dp_header = "Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8,Key,Freq";
@@ -662,6 +725,12 @@ public class DeviceControlActivity extends Activity {
                     fileWriter.append(tag);
                     fileWriter.append(delimiter);
                     fileWriter.append(date);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(selected);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(String.valueOf(nPresentations));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(String.valueOf(volume_level));
                     fileWriter.append(delimiter);
                     fileWriter.append(String.valueOf(rows)).append("x").append(String.valueOf(cols));
                     fileWriter.append(delimiter);
@@ -727,6 +796,141 @@ public class DeviceControlActivity extends Activity {
         ch8_color = ContextCompat.getColor(getApplicationContext(), R.color.black);
         btn_record = findViewById(R.id.btn_record);
         switch_plots = findViewById(R.id.switch_plots);
+        spinner_key = findViewById(R.id.spinner_key);
+        spinner_key.setEnabled(false);
+        spinner_key.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                switch (position) {
+                    case 0:  // C
+                        selected_key = 0;
+                        break;
+                    case 1:  // C#
+                        selected_key = 1;
+                        break;
+                    case 2:  // D
+                        selected_key = 2;
+                        break;
+                    case 3:  // D#
+                        selected_key = 3;
+                        break;
+                    case 4:  // E
+                        selected_key = 4;
+                        break;
+                    case 5:  // F
+                        selected_key = 5;
+                        break;
+                    case 6:  // F#
+                        selected_key = 6;
+                        break;
+                    case 7:  // G
+                        selected_key = 7;
+                        break;
+                    case 8:  // G#
+                        selected_key = 8;
+                        break;
+                    case 9:  // A
+                        selected_key = 9;
+                        break;
+                    case 10:  // A#
+                        selected_key = 10;
+                        break;
+                    case 11:  // B
+                        selected_key = 11;
+                        break;
+                }
+                showExperimentSettings();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // sometimes you need nothing here
+            }
+        });
+        spinner_min_o = findViewById(R.id.spinner_min_o);
+        spinner_max_o = findViewById(R.id.spinner_max_o);
+        spinner_min_o.setSelection(MINOCTAVE);
+        spinner_max_o.setSelection(MAXOCTAVE);
+        spinner_min_o.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                switch (position) {
+                    case 0:
+                        MINOCTAVE = 0;
+                        break;
+                    case 1:
+                        MINOCTAVE = 1;
+                        break;
+                    case 2:
+                        MINOCTAVE = 2;
+                        break;
+                    case 3:
+                        MINOCTAVE = 3;
+                        break;
+                    case 4:
+                        MINOCTAVE = 4;
+                        break;
+                    case 5:
+                        MINOCTAVE = 5;
+                        break;
+                    case 6:
+                        MINOCTAVE = 6;
+                        break;
+                    case 7:
+                        MINOCTAVE = 7;
+                        break;
+                    case 8:
+                        MINOCTAVE = 8;
+                        break;
+                }
+                showExperimentSettings();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // sometimes you need nothing here
+            }
+        });
+        spinner_max_o.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                switch (position) {
+                    case 0:
+                        MAXOCTAVE = 0;
+                        break;
+                    case 1:
+                        MAXOCTAVE = 1;
+                        break;
+                    case 2:
+                        MAXOCTAVE = 2;
+                        break;
+                    case 3:
+                        MAXOCTAVE = 3;
+                        break;
+                    case 4:
+                        MAXOCTAVE = 4;
+                        break;
+                    case 5:
+                        MAXOCTAVE = 5;
+                        break;
+                    case 6:
+                        MAXOCTAVE = 6;
+                        break;
+                    case 7:
+                        MAXOCTAVE = 7;
+                        break;
+                    case 8:
+                        MAXOCTAVE = 8;
+                        break;
+                }
+                showExperimentSettings();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // sometimes you need nothing here
+            }
+        });
         gain_spinner = findViewById(R.id.gain_spinner);
         gain_spinner.setSelection(1);
         gain_spinner.setEnabled(false);
@@ -824,6 +1028,15 @@ public class DeviceControlActivity extends Activity {
         chckbx_ch6 = findViewById(R.id.checkBox_ch6);
         chckbx_ch7 = findViewById(R.id.checkBox_ch7);
         chckbx_ch8 = findViewById(R.id.checkBox_ch8);
+        chckbx_repeat = findViewById(R.id.chckbx_repeat);
+        chckbx_repeat.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                repeat_stimulus = isChecked;
+                if (repeat_stimulus) spinner_key.setEnabled(true);
+                else spinner_key.setEnabled(false);
+                showExperimentSettings();
+            }
+        });
         chckbx_ch1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 show_ch1 = isChecked;
