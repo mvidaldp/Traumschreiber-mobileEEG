@@ -87,29 +87,24 @@ public class BluetoothLeService extends Service {
 
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-            if (status == BluetoothGatt.GATT_SUCCESS) {
+            if (status == BluetoothGatt.GATT_SUCCESS)
                 broadcastUpdate(ACTION_GATT_SERVICES_DISCOVERED);
-            } else {
-                Log.w(TAG, "onServicesDiscovered received: " + status);
-            }
+            else Log.w(TAG, "onServicesDiscovered received: " + status);
         }
 
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt,
                                          BluetoothGattCharacteristic characteristic,
                                          int status) {
-            if (status == BluetoothGatt.GATT_SUCCESS) {
+            if (status == BluetoothGatt.GATT_SUCCESS)
                 broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
-            }
         }
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt,
                                           BluetoothGattCharacteristic characteristic,
                                           int status) {
-            Log.d(TAG,"------------- onCharacteristicWrite status: " + status);
-
-            // do somethings here.
+            Log.d(TAG, "------------- onCharacteristicWrite status: " + status);
         }
 
         @Override
@@ -150,14 +145,11 @@ public class BluetoothLeService extends Service {
             if (data != null && data.length > 0) {
                 //We have to decompress the EEG-Data here. This is done by TraumschreiberService.decompress();
                 int[] data_int = TraumschreiberService.decompress(data);
-
                 final StringBuilder stringBuilder = new StringBuilder(data.length);
-
                 //log incoming data:
                 StringBuilder stringBuilder1 = new StringBuilder(data_int.length);
-                for (int datapoint : data_int) {
+                for (int datapoint : data_int)
                     stringBuilder1.append(String.format("%+06d ", datapoint));
-                }
                 Log.d(TAG, "Received EEG Signal " + stringBuilder1.toString());
                 stringBuilder.append(stringBuilder1.toString());
                 intent.putExtra(EXTRA_DATA, data_int);
@@ -228,17 +220,13 @@ public class BluetoothLeService extends Service {
             return false;
         }
         // Previously connected device.  Try to reconnect.
-        if (address.equals(mBluetoothDeviceAddress)
-                && mBluetoothGatt != null) {
+        if (address.equals(mBluetoothDeviceAddress) && mBluetoothGatt != null) {
             Log.d(TAG, "Trying to use an existing mBluetoothGatt for connection.");
             if (mBluetoothGatt.connect()) {
                 mConnectionState = STATE_CONNECTING;
                 return true;
-            } else {
-                return false;
-            }
+            } else return false;
         }
-
         final BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
         if (device == null) {
             Log.w(TAG, "Device not found.  Unable to connect.");
@@ -272,9 +260,7 @@ public class BluetoothLeService extends Service {
      * released properly.
      */
     private void close() {
-        if (mBluetoothGatt == null) {
-            return;
-        }
+        if (mBluetoothGatt == null) return;
         mBluetoothGatt.close();
         mBluetoothGatt = null;
     }
@@ -308,7 +294,6 @@ public class BluetoothLeService extends Service {
             return;
         }
         mBluetoothGatt.setCharacteristicNotification(characteristic, enabled);
-
         // This is specific to Heart Rate Measurement.
         if (UUID_HEART_RATE_MEASUREMENT.equals(characteristic.getUuid())) {
             BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
@@ -331,16 +316,6 @@ public class BluetoothLeService extends Service {
         Log.w(TAG, characteristic.toString());
         mBluetoothGatt.writeCharacteristic(characteristic);
     }
-
-//    public boolean writeCharacteristic(BluetoothGattCharacteristic characteristic) {
-//        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
-//            Log.w(TAG, "BluetoothAdapter not initialized");
-//            return false;
-//        }
-//        Log.w(TAG, characteristic.toString());
-//        boolean status = mBluetoothGatt.writeCharacteristic(characteristic);
-//        return status;
-//    }
 
     /**
      * Retrieves a list of supported GATT services on the connected device. This should be
