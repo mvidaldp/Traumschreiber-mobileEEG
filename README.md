@@ -13,12 +13,16 @@
 <img title="Scanning" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/scanning.png" alt="Scanning" height="500">
 
 ### Data plotting/recording activity
-<img title="Plotting EEG data" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/hidden_plot.png" alt="Plotting EEG data" height="500">
-<img title="Plotting EEG data" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/plot_7channels.png" alt="Plotting EEG data" height="500">
-<img title="Plotting EEG data" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/plot_2channels.png" alt="Plotting EEG data" height="500">
-<img title="Plotting EEG data" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/disconnected.png" alt="Plotting EEG data" height="500">
-<img title="Plotting EEG data" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/plot_ch1.png" alt="Plotting EEG data" height="500">
-<img title="Plotting EEG data" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/plot_ch7.png" alt="Plotting EEG data" height="500">
-<img title="Plotting EEG data" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/plot_zoomin.png" alt="Plotting EEG data" height="500">
+<img title="Hidden live plot" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/hidden_plot.png" alt="Hidden live plot" height="500">
+<img title="Plotting many channels" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/plot_7channels.png" alt="Plotting many channels" height="500">
+<img title="Plotting 2 channels" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/plot_2channels.png" alt="Plotting 2 channels" height="500">
+<img title="Disconnected data stream" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/disconnected.png" alt="Disconnected data stream" height="500">
+<img title="Plotting one channel" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/plot_ch1.png" alt="Plotting one channel" height="500">
+<img title="Plotting one channel" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/plot_ch7.png" alt="Plotting one channel" height="500">
+<img title="Zooming in" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/plot_zoomin.png" alt="Zooming in" height="500">
+
+### Session tagging and stored data
+<img title="Tagging the session to record" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/session_tag.png" alt="Tagging the session to record" height="500">
+<img title="Stored data sample (CSV)" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/csv_data.png" alt="Stored data sample (CSV)" height="500">
 
 *A project of the [Neuroinformatics Research Group](https://www.ikw.uni-osnabrueck.de/en/research_groups/neuroinformatics/overview.html) of the [Institute of Cognitive Science](https://www.ikw.uni-osnabrueck.de/en/home.html) at the [University of Osnabrück](https://www.uni-osnabrueck.de/en/home.html).*
