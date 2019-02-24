@@ -105,6 +105,7 @@ public class DeviceControlActivity extends Activity {
     private final ArrayList<Entry> lineEntries8 = new ArrayList<>();
     private int selected_key = 0;
     private int MINOCTAVE = 4;
+    private int ACCUM_PLOT = 30;
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
@@ -262,12 +263,11 @@ public class DeviceControlActivity extends Activity {
                 displayData(microV);
                 if (plotting) {
                     long plotting_elapsed = last_data - plotting_start;
-                    if (plotting_elapsed > 30) {
+                    if (plotting_elapsed > ACCUM_PLOT) {
                         addEntries(accumulated);
                         accumulated.clear();
                         plotting_start = System.currentTimeMillis();
                     } else accumulated.add(microV);
-
                 }
                 if (recording) storeData(microV);
                 if (start_data == 0) start_data = System.currentTimeMillis();
@@ -292,7 +292,6 @@ public class DeviceControlActivity extends Activity {
                 mXAxis.setVisibility(ViewStub.VISIBLE);
                 plotting = true;
                 plotting_start = System.currentTimeMillis();
-
             }
         }
     };
