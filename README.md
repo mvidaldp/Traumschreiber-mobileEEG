@@ -23,6 +23,6 @@
 
 ### Session tagging and stored data
 <img title="Tagging the session to record" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/session_tag.png" alt="Tagging the session to record" height="500">
-<img title="Stored data sample (CSV)" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/csv_data.png" alt="Stored data sample (CSV)" height="500">
+<img title="Stored data sample (CSV)" src="https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/csv_data.png" alt="Stored data sample (CSV)" height="250">
 
 *A project of the [Neuroinformatics Research Group](https://www.ikw.uni-osnabrueck.de/en/research_groups/neuroinformatics/overview.html) of the [Institute of Cognitive Science](https://www.ikw.uni-osnabrueck.de/en/home.html) at the [University of Osnabrück](https://www.uni-osnabrueck.de/en/home.html).*
