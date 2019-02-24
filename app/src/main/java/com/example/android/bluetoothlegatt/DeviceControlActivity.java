@@ -14,6 +14,7 @@ import android.graphics.Color;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -81,6 +82,7 @@ public class DeviceControlActivity extends Activity {
     private final List<ImmutablePair<String, Double>> notes = new ArrayList<>();
     private final List<ImmutablePair<String, Double>> stimuli_data = new ArrayList<>();
     private final List<Float> s_times = new ArrayList<>();
+    private final List<List<Float>> accumulated = new ArrayList<>();
     // constants
     private final int NKEYS = 12;
     private final int STIMULUS_START = 4000;
@@ -88,9 +90,9 @@ public class DeviceControlActivity extends Activity {
     private final int PERIOD = 3000;  // milliseconds
     private final int SILENCE_START = 5000;
     private final int TUNING = 440;
+    private final int CONNECT_DELAY = 2000;
     private final float DATAPOINT_TIME = 4.5f;
     private final int PLOT_MEMO = 3000;  // max time range in ms (x value) to store on plot
-    private final int DPS_AVG_CNT = 2;
     private final int MAX_VISIBLE = 500;  // see 500ms at the time on the plot
     private final String TONES_PATH = Environment.getExternalStorageDirectory().getPath() + "/Tones/";
     private final ArrayList<Entry> lineEntries1 = new ArrayList<>();
@@ -101,6 +103,8 @@ public class DeviceControlActivity extends Activity {
     private final ArrayList<Entry> lineEntries6 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries7 = new ArrayList<>();
     private final ArrayList<Entry> lineEntries8 = new ArrayList<>();
+    private int selected_key = 0;
+    private int MINOCTAVE = 4;
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
@@ -109,20 +113,22 @@ public class DeviceControlActivity extends Activity {
             if (!mBluetoothLeService.initialize()) {
                 Log.e(TAG, "Unable to initialize Bluetooth");
                 finish();
-            } else {
-                mBluetoothLeService.disconnect();
-                mBluetoothLeService.connect(mDeviceAddress);
             }
-            // Automatically connects to the device upon successful start-up initialization.
+            // hack for ensuring a successful connection
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mBluetoothLeService.connect(mDeviceAddress);
+                }
+            }, CONNECT_DELAY);  // connect with a defined delay
         }
 
+        // Automatically connects to the device upon successful start-up initialization.
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
             mBluetoothLeService = null;
         }
     };
-    private int selected_key = 0;
-    private int MINOCTAVE = 4;
     private double freq;
     private String key = "";
     private float res_time;
@@ -150,7 +156,6 @@ public class DeviceControlActivity extends Activity {
     private boolean show_ch6 = true;
     private boolean show_ch7 = true;
     private boolean show_ch8 = true;
-    private int MAXOCTAVE = 6;
     private int enabledCheckboxes = 8;
     private TextView mConnectionState;
     private TextView mCh1;
@@ -179,6 +184,7 @@ public class DeviceControlActivity extends Activity {
     private String mDeviceName;
     private String mDeviceAddress;
     private BluetoothLeService mBluetoothLeService;
+    private int MAXOCTAVE = 6;
     private Spinner spinner_max_o;
     private String selected;
     private float volume_level;
@@ -191,20 +197,6 @@ public class DeviceControlActivity extends Activity {
     private View layout_plots;
     private boolean recording = false;
     private boolean plotting = false;
-    private final CompoundButton.OnCheckedChangeListener switchPlotsOnCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
-        @Override
-        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-            if (!isChecked) {
-                layout_plots.setVisibility(ViewStub.GONE);
-                mXAxis.setVisibility(ViewStub.GONE);
-                plotting = false;
-            } else {
-                layout_plots.setVisibility(ViewStub.VISIBLE);
-                mXAxis.setVisibility(ViewStub.VISIBLE);
-                plotting = true;
-            }
-        }
-    };
     private boolean playing = false;
     private List<float[]> main_data;
     private float data_cnt = 0;
@@ -232,6 +224,7 @@ public class DeviceControlActivity extends Activity {
     };
     private String selected_gain;
     private Thread thread;
+    private long plotting_start;
     // Handles various events fired by the Service.
     // ACTION_GATT_CONNECTED: connected to a GATT server.
     // ACTION_GATT_DISCONNECTED: disconnected from a GATT server.
@@ -256,28 +249,50 @@ public class DeviceControlActivity extends Activity {
                 gain_spinner.setEnabled(false);
                 disableCheckboxes();
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
-                // Show all the supported services and characteristics on the user interface.
-                if (mNotifyCharacteristic == null) {
+                if (mNotifyCharacteristic == null)
                     readGattCharacteristic(mBluetoothLeService.getSupportedGattServices());
-                }
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
                 data_cnt++;
+                long last_data = System.currentTimeMillis();
                 switch_plots.setEnabled(true);
                 btn_record.setEnabled(true);
                 gain_spinner.setEnabled(true);
                 enableCheckboxes();
                 List<Float> microV = transData(intent.getIntArrayExtra(BluetoothLeService.EXTRA_DATA));
                 displayData(microV);
-                if (plotting) plotData(microV);
+                if (plotting) {
+                    long plotting_elapsed = last_data - plotting_start;
+                    if (plotting_elapsed > 30) {
+                        addEntries(accumulated);
+                        accumulated.clear();
+                        plotting_start = System.currentTimeMillis();
+                    } else accumulated.add(microV);
+
+                }
                 if (recording) storeData(microV);
                 if (start_data == 0) start_data = System.currentTimeMillis();
-                long last_data = System.currentTimeMillis();
                 res_time = (last_data - start_data) / data_cnt;
                 res_freq = (1 / res_time) * 1000;
                 String hertz = String.valueOf((int) res_freq) + "Hz";
                 @SuppressLint("DefaultLocale") String resolution = String.format("%.2f", res_time) + "ms - ";
                 String content = resolution + hertz;
                 mDataResolution.setText(content);
+            }
+        }
+    };
+    private final CompoundButton.OnCheckedChangeListener switchPlotsOnCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            if (!isChecked) {
+                layout_plots.setVisibility(ViewStub.GONE);
+                mXAxis.setVisibility(ViewStub.GONE);
+                plotting = false;
+            } else {
+                layout_plots.setVisibility(ViewStub.VISIBLE);
+                mXAxis.setVisibility(ViewStub.VISIBLE);
+                plotting = true;
+                plotting_start = System.currentTimeMillis();
+
             }
         }
     };
@@ -289,497 +304,6 @@ public class DeviceControlActivity extends Activity {
         intentFilter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED);
         intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
         return intentFilter;
-    }
-
-    private void enableCheckboxes() {
-        chckbx_ch1.setEnabled(true);
-        chckbx_ch2.setEnabled(true);
-        chckbx_ch3.setEnabled(true);
-        chckbx_ch4.setEnabled(true);
-        chckbx_ch5.setEnabled(true);
-        chckbx_ch6.setEnabled(true);
-        chckbx_ch7.setEnabled(true);
-        chckbx_ch8.setEnabled(true);
-    }
-
-    private void disableCheckboxes() {
-        chckbx_ch1.setEnabled(false);
-        chckbx_ch2.setEnabled(false);
-        chckbx_ch3.setEnabled(false);
-        chckbx_ch4.setEnabled(false);
-        chckbx_ch5.setEnabled(false);
-        chckbx_ch6.setEnabled(false);
-        chckbx_ch7.setEnabled(false);
-        chckbx_ch8.setEnabled(false);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
-        if (mBluetoothLeService != null) {
-            mBluetoothLeService.disconnect();
-            final boolean result = mBluetoothLeService.connect(mDeviceAddress);
-            Log.d(TAG, "Connect request result=" + result);
-        }
-    }
-
-    private void showExperimentSettings() {
-        String stimuli_text = "- Stimuli selected: ";
-        int time;
-        if (repeat_stimulus) {
-            time = (STIMULUS_START + NKEYS * MAXOCTAVE * PERIOD) / 1000;
-            selected = spinner_key.getSelectedItem().toString() + MINOCTAVE;
-        } else {
-            time = (STIMULUS_START + NKEYS * (MAXOCTAVE + 1 - MINOCTAVE) * PERIOD) / 1000;
-            selected = "C" + spinner_min_o.getSelectedItem().toString() + "-" + "B" + spinner_max_o.getSelectedItem().toString();
-        }
-        String time_text = "- Time: " + time;
-        Toast.makeText(
-                getApplicationContext(),
-                "EXPERIMENT SETTINGS:\n" + stimuli_text + selected + "\n" + time_text + "s",
-                Toast.LENGTH_LONG
-        ).show();
-
-    }
-
-    private List<ImmutablePair<Integer, Integer>> generateKeys() {
-        List<ImmutablePair<Integer, Integer>> new_keys = new ArrayList<>();
-        int min = MINOCTAVE;
-        int max = MAXOCTAVE;
-        if (repeat_stimulus) {
-            min = 1;
-            max = MAXOCTAVE;
-        }
-        for (int o = min; o <= max; o++) {
-            for (int k = 0; k < NKEYS; k++) {
-                ImmutablePair<Integer, Integer> pair;
-                if (!repeat_stimulus)
-                    pair = new ImmutablePair<>(k, o);
-                else
-                    pair = new ImmutablePair<>(selected_key, MINOCTAVE);
-                new_keys.add(pair);
-            }
-        }
-        // randomize list
-        Collections.shuffle(new_keys);
-        return new_keys;
-    }
-
-    private List<ImmutablePair<String, Double>> keysToNotes(List<ImmutablePair<Integer, Integer>> keysList) {
-        char letter = ' ';
-        char accidental;
-        String note;
-        List<ImmutablePair<String, Double>> notesFreqs = new ArrayList<>();
-        for (ImmutablePair<Integer, Integer> pair : keysList) {
-            int key = pair.getKey();  // e.g note from 0 to 11
-            int octave = pair.getValue(); // e.g octave from 2 to 5
-            accidental = ' ';
-            switch (key) {
-                case 0:
-                    letter = 'C';
-                    break;
-                case 1:
-                    letter = 'C';
-                    accidental = '#';
-                    break;
-                case 2:
-                    letter = 'D';
-                    break;
-                case 3:
-                    letter = 'D';
-                    accidental = '#';
-                    break;
-                case 4:
-                    letter = 'E';
-                    break;
-                case 5:
-                    letter = 'F';
-                    break;
-                case 6:
-                    letter = 'F';
-                    accidental = '#';
-                    break;
-                case 7:
-                    letter = 'G';
-                    break;
-                case 8:
-                    letter = 'G';
-                    accidental = '#';
-                    break;
-                case 9:
-                    letter = 'A';
-                    break;
-                case 10:
-                    letter = 'A';
-                    accidental = '#';
-                    break;
-                case 11:
-                    letter = 'B';
-                    break;
-            }
-            if (accidental != ' ') note = letter + "" + accidental + "" + octave;  // e.g. C#5
-            else note = letter + "" + octave; // e.g. C5
-            NoteToFrequency mNotetoFreq = new NoteToFrequency(letter, accidental, octave, TUNING);
-            double frequency = mNotetoFreq.frequency;
-            ImmutablePair<String, Double> noteFreqPair = new ImmutablePair<>(note, frequency);
-            notesFreqs.add(noteFreqPair);
-        }
-        return notesFreqs;
-    }
-
-    private void startTimer() {
-        //set a new Timer
-        timer = new Timer();
-        //initialize the TimerTask's job
-        initializeTimerTask();
-        // schedule the timer, the stimulus presence will repeat every 3 seconds
-        timer.schedule(timerTask, STIMULUS_START, PERIOD);
-        // the silence (stop MediaPlayer) starts after 5.5 seconds, repeat every 3 seconds
-        // done this way to avoid "click" sounds at the end of the presentation
-        timer.schedule(timerTask2, SILENCE_START, PERIOD);
-    }
-
-    private void initializeTimerTask2() {
-        timerTask3 = new TimerTask() {
-            public void run() {
-                handler.post(new Runnable() {
-                    public void run() {
-                        playing = false;
-                        timer2.cancel();
-                        timer2.purge();
-                    }
-                });
-            }
-        };
-    }
-
-    private void initializeTimerTask() {
-        final AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
-        timerTask = new TimerTask() {
-            public void run() {
-                handler.post(new Runnable() {
-                    public void run() {
-                        if (!notes.isEmpty()) {
-                            mMediaPlayer = new MediaPlayer();
-                            ImmutablePair<String, Double> note = notes.get(0);
-                            key = note.getKey();  // same as .getLeft()
-                            freq = note.getValue();
-                            String solfa = "";
-                            switch (key.charAt(0)) {
-                                case 'A':
-                                    solfa = "La";
-                                    break;
-                                case 'B':
-                                    solfa = "Si";
-                                    break;
-                                case 'C':
-                                    solfa = "Do";
-                                    break;
-                                case 'D':
-                                    solfa = "Re";
-                                    break;
-                                case 'E':
-                                    solfa = "Mi";
-                                    break;
-                                case 'F':
-                                    solfa = "Fa";
-                                    break;
-                                case 'G':
-                                    solfa = "Sol";
-                                    break;
-                            }
-                            try {
-                                mMediaPlayer.setDataSource(TONES_PATH + key + ".wav");
-                                mMediaPlayer.prepare();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                            float s_appearance = System.currentTimeMillis() - start_watch;
-                            s_times.add(s_appearance);
-                            String key_n_freq = key + " = " + freq + "Hz";
-                            XAxis bottom = mChart.getXAxis();
-                            LimitLine ll_start = new LimitLine(s_appearance, key_n_freq);
-                            float silence_pos = s_appearance + STIMULUS_LENGTH;
-                            LimitLine ll_stop = new LimitLine(silence_pos, "Silence");
-                            ll_start.setLineColor(Color.GREEN);
-                            ll_start.setTextColor(Color.GREEN);
-                            ll_stop.setLineColor(Color.RED);
-                            ll_stop.setTextColor(Color.RED);
-                            bottom.addLimitLine(ll_start);
-                            bottom.addLimitLine(ll_stop);
-                            mChart.notifyDataSetChanged();
-                            mMediaPlayer.start();
-                            // This shows -Infinity (0 volume) -> -53.th up to 0dB)
-                            // TODO: Get the actual dB SPL
-                            int streamVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-                            volume_level = audioManager.getStreamVolumeDb(AudioManager.STREAM_MUSIC, streamVolume, AudioDeviceInfo.TYPE_WIRED_HEADPHONES);
-//                            Toast.makeText(
-//                                    getApplicationContext(),
-//                                    "Decibels = " + String.valueOf(volume_level),
-//                                    Toast.LENGTH_LONG
-//                            ).show();
-                            playing = true;
-                            initializeTimerTask2();
-                            timer2 = new Timer();
-                            timer2.schedule(timerTask3, STIMULUS_LENGTH);  // run only once
-                            notes.remove(0);
-                            Toast.makeText(
-                                    getApplicationContext(),
-                                    solfa + "/" + key_n_freq,
-                                    Toast.LENGTH_LONG
-                            ).show();
-                        } else {
-                            timer.cancel();
-                            endTrial();
-                        }
-                    }
-                });
-            }
-        };
-        timerTask2 = new TimerTask() {
-            public void run() {
-                handler.post(new Runnable() {
-                    public void run() {
-                        mMediaPlayer.release();
-                        mMediaPlayer = null;
-                    }
-                });
-            }
-        };
-    }
-
-    private void clearUI() {
-        mCh1.setText("");
-        mCh2.setText("");
-        mCh3.setText("");
-        mCh4.setText("");
-        mCh5.setText("");
-        mCh6.setText("");
-        mCh7.setText("");
-        mCh8.setText("");
-        mDataResolution.setText(R.string.no_data);
-        data_cnt = 0;
-        start_data = 0;
-    }
-
-    @SuppressLint({"SimpleDateFormat", "SetTextI18n"})
-    private void startTrial() {
-        cnt = 0;
-        main_data = new ArrayList<>();
-        start_time = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
-        start_watch = System.currentTimeMillis();
-        start_timestamp = new Timestamp(start_watch).getTime();
-        recording = true;
-        toggleExperimentControls(false);
-        btn_record.setText("Stop and Store Data");
-    }
-
-    private void toggleExperimentControls(boolean enable) {
-        chckbx_repeat.setEnabled(enable);
-        spinner_key.setEnabled(enable);
-        spinner_min_o.setEnabled(enable);
-        spinner_max_o.setEnabled(enable);
-    }
-
-    @SuppressLint("SimpleDateFormat")
-    private void endTrial() {
-        timer.cancel();
-        recording = false;
-        end_time = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
-        long stop_watch = System.currentTimeMillis();
-        end_timestamp = new Timestamp(stop_watch).getTime();
-        recording_time = Long.toString(stop_watch - start_watch);
-        btn_record.setText(R.string.save_label);
-        if (session_label == null) saveSession();
-        else saveSession(session_label);
-        session_label = null;
-        Toast.makeText(
-                getApplicationContext(),
-                "Your EEG session was successfully stored",
-                Toast.LENGTH_LONG
-        ).show();
-        toggleExperimentControls(true);
-        btn_record.setText(R.string.record_label);
-    }
-
-    private void askForLabel() {
-        new MaterialDialog.Builder(this)
-                .title("Please, enter the session label")
-                .inputType(InputType.TYPE_CLASS_TEXT)
-                .input("E.g. walking, eating, sleeping, etc.",
-                        "", new MaterialDialog.InputCallback() {
-                            @Override
-                            public void onInput(@NonNull MaterialDialog dialog, CharSequence input) {
-                                session_label = input.toString();
-                                // Use a new tread as this can take a while
-                                // onResume we start our timer so it can start when the app comes from the background
-                                startTrial();
-                                startTimer();
-                            }
-                        }).show();
-    }
-
-    private List<Float> transData(int[] data) {
-        // Assuming GAIN = 64
-        // Conversion formula: V_in = X*1.65V/(1000 * GAIN * 2048)
-        float gain = Float.parseFloat(selected_gain);
-        float numerator = 1650;
-        float denominator = gain * 2048;
-        List<Float> data_trans = new ArrayList<>();
-        for (int datapoint : data) {
-            data_trans.add((datapoint * numerator) / denominator);
-        }
-        return data_trans;
-    }
-
-    private void plotData(final List<Float> current) {
-        cnt++;
-        if (cnt % DPS_AVG_CNT == 0) {
-            if (thread != null) thread.interrupt();
-            final Runnable runnable = new Runnable() {
-                @Override
-                public void run() {
-                    addEntries(current);
-                }
-            };
-            thread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    runOnUiThread(runnable);
-                }
-            });
-            thread.start();
-        }
-    }
-
-    @SuppressLint("DefaultLocale")
-    private void displayData(List<Float> data_microV) {
-        if (data_microV != null) {
-            // data format example: +01012 -00234 +01374 -01516 +01656 +01747 +00131 -00351
-            StringBuilder trans = new StringBuilder();
-            List<String> values = new ArrayList<>();
-            for (Float value : data_microV) {
-                if (value >= 0) {
-                    trans.append("+");
-                    trans.append(String.format("%5.2f", value));
-                } else trans.append(String.format("%5.2f", value));
-                values.add(trans.toString());
-                trans = new StringBuilder();
-            }
-            mCh1.setText(values.get(0));
-            mCh2.setText(values.get(1));
-            mCh3.setText(values.get(2));
-            mCh4.setText(values.get(3));
-            mCh5.setText(values.get(4));
-            mCh6.setText(values.get(5));
-            mCh7.setText(values.get(6));
-            mCh8.setText(values.get(7));
-        }
-    }
-
-    private void storeData(List<Float> data_microV) {
-        float[] f_microV = new float[data_microV.size()];
-        float curr_received = System.currentTimeMillis() - start_watch;
-        dp_received.add(curr_received);
-        int i = 0;
-        for (Float f : data_microV) {
-            f_microV[i++] = (f != null ? f : Float.NaN); // Or whatever default you want
-        }
-        main_data.add(f_microV);
-        ImmutablePair<String, Double> stimuli = new ImmutablePair<>(key, freq);
-        if (!playing) stimuli = new ImmutablePair<>("silence", 0.0);
-        stimuli_data.add(stimuli);
-    }
-
-    private void saveSession() {
-        saveSession("Default");
-    }
-
-    private void saveSession(final String tag) {
-        final String top_header = "Session ID,Session Tag,Date,Stimuli,Presentations,Volume,Shape (rows x columns)," +
-                "Duration (ms),Starting Time,Ending Time,Resolution (ms),Resolution (Hz)," +
-                "Unit Measure,Starting Timestamp,Ending Timestamp";
-        final String dp_header = "Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8,Key,Freq";
-        final UUID id = UUID.randomUUID();
-        @SuppressLint("SimpleDateFormat") final String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
-        final char delimiter = ',';
-        final char break_line = '\n';
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    File formatted = new File(Environment.getExternalStoragePublicDirectory(
-                            Environment.DIRECTORY_DOWNLOADS),
-                            date + ".csv");
-                    // if file doesn't exists, then create it
-                    if (!formatted.exists()) //noinspection ResultOfMethodCallIgnored
-                        formatted.createNewFile();
-                    FileWriter fileWriter = new FileWriter(formatted);
-                    int rows = main_data.size();
-                    int cols = main_data.get(0).length;
-                    fileWriter.append(top_header);
-                    fileWriter.append(break_line);
-                    fileWriter.append(id.toString());
-                    fileWriter.append(delimiter);
-                    fileWriter.append(tag);
-                    fileWriter.append(delimiter);
-                    fileWriter.append(date);
-                    fileWriter.append(delimiter);
-                    fileWriter.append(selected);
-                    fileWriter.append(delimiter);
-                    fileWriter.append(String.valueOf(nPresentations));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(String.valueOf(volume_level));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(String.valueOf(rows)).append("x").append(String.valueOf(cols));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(recording_time);
-                    fileWriter.append(delimiter);
-                    fileWriter.append(start_time);
-                    fileWriter.append(delimiter);
-                    fileWriter.append(end_time);
-                    fileWriter.append(delimiter);
-                    fileWriter.append(String.valueOf(res_time));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(String.valueOf(res_freq));
-                    fileWriter.append(delimiter);
-                    fileWriter.append("µV");
-                    fileWriter.append(delimiter);
-                    fileWriter.append(Long.toString(start_timestamp));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(Long.toString(end_timestamp));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(break_line);
-                    fileWriter.append("Stimuli appearance");
-                    fileWriter.append(delimiter);
-                    for (float time : s_times) {
-                        fileWriter.append(String.valueOf(time));
-                        fileWriter.append(delimiter);
-                    }
-                    fileWriter.append(break_line);
-                    fileWriter.append(dp_header);
-                    fileWriter.append(break_line);
-                    for (int i = 0; i < rows; i++) {
-                        fileWriter.append(String.valueOf(dp_received.get(i)));
-                        fileWriter.append(delimiter);
-                        for (int j = 0; j < cols; j++) {
-                            fileWriter.append(String.valueOf(main_data.get(i)[j]));
-                            fileWriter.append(delimiter);
-                        }
-                        fileWriter.append(stimuli_data.get(i).getLeft());
-                        fileWriter.append(delimiter);
-                        fileWriter.append(stimuli_data.get(i).getRight().toString());
-                        fileWriter.append(delimiter);
-                        fileWriter.append(break_line);
-                    }
-                    fileWriter.flush();
-                    fileWriter.close();
-                } catch (Exception e) {
-                    Log.e(TAG, "Error storing the data into a CSV file: " + e);
-                }
-            }
-        }).start();
     }
 
     @Override
@@ -932,8 +456,6 @@ public class DeviceControlActivity extends Activity {
             }
         });
         gain_spinner = findViewById(R.id.gain_spinner);
-        gain_spinner.setSelection(1);
-        gain_spinner.setEnabled(false);
         selected_gain = gain_spinner.getSelectedItem().toString();
         gain_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -990,17 +512,17 @@ public class DeviceControlActivity extends Activity {
                 // sometimes you need nothing here
             }
         });
+        gain_spinner.setSelection(1);
+        gain_spinner.setEnabled(false);
         layout_plots = findViewById(R.id.linearLayout_chart);
         layout_plots.setVisibility(ViewStub.GONE);
         mXAxis = findViewById(R.id.XAxis_title);
         mXAxis.setVisibility(ViewStub.GONE);
         btn_record.setOnClickListener(btnRecordOnClickListener);
         switch_plots.setOnCheckedChangeListener(switchPlotsOnCheckedChangeListener);
-
         final Intent intent = getIntent();
         mDeviceName = intent.getStringExtra(EXTRAS_DEVICE_NAME);
         mDeviceAddress = intent.getStringExtra(EXTRAS_DEVICE_ADDRESS);
-
         // Sets up UI references.
         ((TextView) findViewById(R.id.device_address)).setText(mDeviceAddress);
         mConnectionState = findViewById(R.id.connection_state);
@@ -1139,195 +661,20 @@ public class DeviceControlActivity extends Activity {
         setChart();
     }
 
-    private void setChart() {
-        OnChartValueSelectedListener ol = new OnChartValueSelectedListener() {
-            @Override
-            public void onValueSelected(Entry entry, Highlight h) {
-                //entry.getData() returns null here
-            }
-
-            @Override
-            public void onNothingSelected() {
-
-            }
-        };
-        mChart = findViewById(R.id.layout_chart);
-        mChart.setOnChartValueSelectedListener(ol);
-        // enable description text
-        mChart.getDescription().setEnabled(false);
-        // enable touch gestures
-        mChart.setTouchEnabled(true);
-        // enable scaling and dragging
-        mChart.setDragEnabled(true);
-        mChart.setScaleEnabled(true);
-        mChart.setDrawGridBackground(true);
-        // if disabled, scaling can be done on x- and y-axis separately
-        mChart.setPinchZoom(true);
-        // set an alternative background color
-        LineData data = new LineData();
-        data.setValueTextColor(Color.BLACK);
-        // add empty data
-        mChart.setData(data);
-        // get the legend (only possible after setting data)
-        Legend l1 = mChart.getLegend();
-        // modify the legend ...
-        l1.setForm(Legend.LegendForm.LINE);
-        l1.setTextColor(Color.BLACK);
-        // set the y left axis
-        YAxis leftAxis = mChart.getAxisLeft();
-        leftAxis.setTextColor(Color.GRAY);
-        leftAxis.setAxisMaximum(30f);
-        leftAxis.setAxisMinimum(-30f);
-        leftAxis.setLabelCount(13, true); // from -35 to 35, a label each 5 microV
-        leftAxis.setDrawGridLines(true);
-        leftAxis.setGridColor(Color.WHITE);
-        // disable the y right axis
-        YAxis rightAxis = mChart.getAxisRight();
-        rightAxis.setEnabled(false);
-        // set the x bottom axis
-        XAxis bottomAxis = mChart.getXAxis();
-        bottomAxis.setLabelCount(5, true);
-        bottomAxis.setValueFormatter(new MyXAxisValueFormatter());
-        bottomAxis.setPosition(XAxis.XAxisPosition.TOP);
-        bottomAxis.setGridColor(Color.WHITE);
-        bottomAxis.setTextColor(Color.GRAY);
-    }
-
-    private void addEntries(List<Float> f) {
-        List<ILineDataSet> datasets = new ArrayList<>();  // for adding multiple plots
-        float x = cnt * DATAPOINT_TIME;
-        lineEntries1.add(new Entry(x, f.get(0)));
-        LineDataSet set1 = createSet1(lineEntries1, show_ch1);
-        datasets.add(set1);
-        lineEntries2.add(new Entry(x, f.get(1)));
-        LineDataSet set2 = createSet2(lineEntries2, show_ch2);
-        datasets.add(set2);
-        lineEntries3.add(new Entry(x, f.get(2)));
-        LineDataSet set3 = createSet3(lineEntries3, show_ch3);
-        datasets.add(set3);
-        lineEntries4.add(new Entry(x, f.get(3)));
-        LineDataSet set4 = createSet4(lineEntries4, show_ch4);
-        datasets.add(set4);
-        lineEntries5.add(new Entry(x, f.get(4)));
-        LineDataSet set5 = createSet5(lineEntries5, show_ch5);
-        datasets.add(set5);
-        lineEntries6.add(new Entry(x, f.get(5)));
-        LineDataSet set6 = createSet6(lineEntries6, show_ch6);
-        datasets.add(set6);
-        lineEntries7.add(new Entry(x, f.get(6)));
-        LineDataSet set7 = createSet7(lineEntries7, show_ch7);
-        datasets.add(set7);
-        lineEntries8.add(new Entry(x, f.get(7)));
-        LineDataSet set8 = createSet8(lineEntries8, show_ch8);
-        datasets.add(set8);
-        LineData linedata = new LineData(datasets);
-        linedata.notifyDataChanged();
-        mChart.setData(linedata);
-        mChart.notifyDataSetChanged();
-        // limit the number of visible entries
-        mChart.setVisibleXRangeMaximum(MAX_VISIBLE);
-        // move to the latest entry
-        mChart.moveViewToX(x);
-        if (x > PLOT_MEMO) {
-            for (int i = 0; i < mChart.getData().getDataSetCount(); i++) {
-                mChart.getData().getDataSetByIndex(i).removeFirst();
-            }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
+        if (mBluetoothLeService != null) {
+            clearUI();
+            final boolean result = mBluetoothLeService.connect(mDeviceAddress);
+            Log.d(TAG, "Connect request result=" + result);
         }
-    }
-
-
-    private LineDataSet createSet1(ArrayList<Entry> le, boolean show) {
-        LineDataSet set1 = new LineDataSet(le, "Ch-1");
-        set1.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set1.setColor(ch1_color);
-        set1.setDrawCircles(false);
-        set1.setLineWidth(1f);
-        set1.setValueTextColor(ch1_color);
-        set1.setVisible(show);
-        return set1;
-    }
-
-    private LineDataSet createSet2(ArrayList<Entry> le, boolean show) {
-        LineDataSet set2 = new LineDataSet(le, "Ch-2");
-        set2.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set2.setColor(ch2_color);
-        set2.setDrawCircles(false);
-        set2.setLineWidth(1f);
-        set2.setValueTextColor(ch2_color);
-        set2.setVisible(show);
-        return set2;
-    }
-
-    private LineDataSet createSet3(ArrayList<Entry> le, boolean show) {
-        LineDataSet set3 = new LineDataSet(le, "Ch-3");
-        set3.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set3.setColor(ch3_color);
-        set3.setDrawCircles(false);
-        set3.setLineWidth(1f);
-        set3.setValueTextColor(ch3_color);
-        set3.setVisible(show);
-        return set3;
-    }
-
-    private LineDataSet createSet4(ArrayList<Entry> le, boolean show) {
-        LineDataSet set4 = new LineDataSet(le, "Ch-4");
-        set4.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set4.setColor(ch4_color);
-        set4.setDrawCircles(false);
-        set4.setLineWidth(1f);
-        set4.setValueTextColor(ch4_color);
-        set4.setVisible(show);
-        return set4;
-    }
-
-    private LineDataSet createSet5(ArrayList<Entry> le, boolean show) {
-        LineDataSet set5 = new LineDataSet(le, "Ch-5");
-        set5.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set5.setColor(ch5_color);
-        set5.setDrawCircles(false);
-        set5.setLineWidth(1f);
-        set5.setValueTextColor(ch5_color);
-        set5.setVisible(show);
-        return set5;
-    }
-
-    private LineDataSet createSet6(ArrayList<Entry> le, boolean show) {
-        LineDataSet set6 = new LineDataSet(le, "Ch-6");
-        set6.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set6.setColor(ch6_color);
-        set6.setDrawCircles(false);
-        set6.setLineWidth(1f);
-        set6.setValueTextColor(ch6_color);
-        set6.setVisible(show);
-        return set6;
-    }
-
-    private LineDataSet createSet7(ArrayList<Entry> le, boolean show) {
-        LineDataSet set7 = new LineDataSet(le, "Ch-7");
-        set7.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set7.setColor(ch7_color);
-        set7.setDrawCircles(false);
-        set7.setLineWidth(1f);
-        set7.setValueTextColor(ch7_color);
-        set7.setVisible(show);
-        return set7;
-    }
-
-    private LineDataSet createSet8(ArrayList<Entry> le, boolean show) {
-        LineDataSet set8 = new LineDataSet(le, "Ch-8");
-        set8.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set8.setColor(ch8_color);
-        set8.setDrawCircles(false);
-        set8.setLineWidth(1f);
-        set8.setValueTextColor(ch8_color);
-        set8.setVisible(show);
-        return set8;
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        mBluetoothLeService.disconnect();
         unregisterReceiver(mGattUpdateReceiver);
     }
 
@@ -1433,11 +780,10 @@ public class DeviceControlActivity extends Activity {
         }
     }
 
-
     // Demonstrates how to iterate through the supported GATT Services/Characteristics.
     // In this sample, we populate the data structure that is bound to the ExpandableListView
     // on the UI.
-    private void readGattCharacteristic(List<BluetoothGattService> gattServices) {
+    private void readGattCharacteristic(final List<BluetoothGattService> gattServices) {
         if (gattServices == null) return;
         String uuid;
         // Loops through available GATT Services.
@@ -1466,10 +812,667 @@ public class DeviceControlActivity extends Activity {
                         mBluetoothLeService.setCharacteristicNotification(
                                 gattCharacteristic, true);
                     }
-                    mBluetoothLeService.disconnect();
-                    mBluetoothLeService.connect(mDeviceAddress);
                 }
             }
         }
+    }
+
+    private void clearUI() {
+        mCh1.setText("");
+        mCh2.setText("");
+        mCh3.setText("");
+        mCh4.setText("");
+        mCh5.setText("");
+        mCh6.setText("");
+        mCh7.setText("");
+        mCh8.setText("");
+        mDataResolution.setText(R.string.no_data);
+        data_cnt = 0;
+        start_data = 0;
+    }
+
+    private void enableCheckboxes() {
+        chckbx_ch1.setEnabled(true);
+        chckbx_ch2.setEnabled(true);
+        chckbx_ch3.setEnabled(true);
+        chckbx_ch4.setEnabled(true);
+        chckbx_ch5.setEnabled(true);
+        chckbx_ch6.setEnabled(true);
+        chckbx_ch7.setEnabled(true);
+        chckbx_ch8.setEnabled(true);
+    }
+
+    private void disableCheckboxes() {
+        chckbx_ch1.setEnabled(false);
+        chckbx_ch2.setEnabled(false);
+        chckbx_ch3.setEnabled(false);
+        chckbx_ch4.setEnabled(false);
+        chckbx_ch5.setEnabled(false);
+        chckbx_ch6.setEnabled(false);
+        chckbx_ch7.setEnabled(false);
+        chckbx_ch8.setEnabled(false);
+    }
+
+    private void toggleExperimentControls(boolean enable) {
+        chckbx_repeat.setEnabled(enable);
+        spinner_key.setEnabled(enable);
+        spinner_min_o.setEnabled(enable);
+        spinner_max_o.setEnabled(enable);
+    }
+
+    private List<Float> transData(int[] data) {
+        // Assuming GAIN = 64
+        // Conversion formula: V_in = X*1.65V/(1000 * GAIN * 2048)
+        float gain = Float.parseFloat(selected_gain);
+        float numerator = 1650;
+        float denominator = gain * 2048;
+        List<Float> data_trans = new ArrayList<>();
+        for (int datapoint : data)
+            data_trans.add((datapoint * numerator) / denominator);
+        return data_trans;
+    }
+
+    @SuppressLint("DefaultLocale")
+    private void displayData(List<Float> data_microV) {
+        if (data_microV != null) {
+            // data format example: +01012 -00234 +01374 -01516 +01656 +01747 +00131 -00351
+            StringBuilder trans = new StringBuilder();
+            List<String> values = new ArrayList<>();
+            for (Float value : data_microV) {
+                if (value >= 0) {
+                    trans.append("+");
+                    trans.append(String.format("%5.2f", value));
+                } else trans.append(String.format("%5.2f", value));
+                values.add(trans.toString());
+                trans = new StringBuilder();
+            }
+            mCh1.setText(values.get(0));
+            mCh2.setText(values.get(1));
+            mCh3.setText(values.get(2));
+            mCh4.setText(values.get(3));
+            mCh5.setText(values.get(4));
+            mCh6.setText(values.get(5));
+            mCh7.setText(values.get(6));
+            mCh8.setText(values.get(7));
+        }
+    }
+
+    private void setChart() {
+        OnChartValueSelectedListener ol = new OnChartValueSelectedListener() {
+            @Override
+            public void onValueSelected(Entry entry, Highlight h) {
+                //entry.getData() returns null here
+            }
+
+            @Override
+            public void onNothingSelected() {
+
+            }
+        };
+        mChart = findViewById(R.id.layout_chart);
+        mChart.setOnChartValueSelectedListener(ol);
+        // enable description text
+        mChart.getDescription().setEnabled(false);
+        // enable touch gestures
+        mChart.setTouchEnabled(true);
+        // enable scaling and dragging
+        mChart.setDragEnabled(true);
+        mChart.setScaleEnabled(true);
+        mChart.setDrawGridBackground(true);
+        // if disabled, scaling can be done on x- and y-axis separately
+        mChart.setPinchZoom(true);
+        // set an alternative background color
+        LineData data = new LineData();
+        data.setValueTextColor(Color.BLACK);
+        // add empty data
+        mChart.setData(data);
+        // get the legend (only possible after setting data)
+        Legend l1 = mChart.getLegend();
+        // modify the legend ...
+        l1.setForm(Legend.LegendForm.LINE);
+        l1.setTextColor(Color.BLACK);
+        // set the y left axis
+        YAxis leftAxis = mChart.getAxisLeft();
+        leftAxis.setTextColor(Color.GRAY);
+        leftAxis.setAxisMaximum(30f);
+        leftAxis.setAxisMinimum(-30f);
+        leftAxis.setLabelCount(13, true); // from -35 to 35, a label each 5 microV
+        leftAxis.setDrawGridLines(true);
+        leftAxis.setGridColor(Color.WHITE);
+        // disable the y right axis
+        YAxis rightAxis = mChart.getAxisRight();
+        rightAxis.setEnabled(false);
+        // set the x bottom axis
+        XAxis bottomAxis = mChart.getXAxis();
+        bottomAxis.setLabelCount(5, true);
+        bottomAxis.setValueFormatter(new MyXAxisValueFormatter());
+        bottomAxis.setPosition(XAxis.XAxisPosition.TOP);
+        bottomAxis.setGridColor(Color.WHITE);
+        bottomAxis.setTextColor(Color.GRAY);
+    }
+
+    private LineDataSet createSet1(ArrayList<Entry> le, boolean show) {
+        LineDataSet set1 = new LineDataSet(le, "Ch-1");
+        set1.setAxisDependency(YAxis.AxisDependency.LEFT);
+        set1.setColor(ch1_color);
+        set1.setDrawCircles(false);
+        set1.setLineWidth(1f);
+        set1.setValueTextColor(ch1_color);
+        set1.setVisible(show);
+        return set1;
+    }
+
+    private LineDataSet createSet2(ArrayList<Entry> le, boolean show) {
+        LineDataSet set2 = new LineDataSet(le, "Ch-2");
+        set2.setAxisDependency(YAxis.AxisDependency.LEFT);
+        set2.setColor(ch2_color);
+        set2.setDrawCircles(false);
+        set2.setLineWidth(1f);
+        set2.setValueTextColor(ch2_color);
+        set2.setVisible(show);
+        return set2;
+    }
+
+    private LineDataSet createSet3(ArrayList<Entry> le, boolean show) {
+        LineDataSet set3 = new LineDataSet(le, "Ch-3");
+        set3.setAxisDependency(YAxis.AxisDependency.LEFT);
+        set3.setColor(ch3_color);
+        set3.setDrawCircles(false);
+        set3.setLineWidth(1f);
+        set3.setValueTextColor(ch3_color);
+        set3.setVisible(show);
+        return set3;
+    }
+
+    private LineDataSet createSet4(ArrayList<Entry> le, boolean show) {
+        LineDataSet set4 = new LineDataSet(le, "Ch-4");
+        set4.setAxisDependency(YAxis.AxisDependency.LEFT);
+        set4.setColor(ch4_color);
+        set4.setDrawCircles(false);
+        set4.setLineWidth(1f);
+        set4.setValueTextColor(ch4_color);
+        set4.setVisible(show);
+        return set4;
+    }
+
+    private LineDataSet createSet5(ArrayList<Entry> le, boolean show) {
+        LineDataSet set5 = new LineDataSet(le, "Ch-5");
+        set5.setAxisDependency(YAxis.AxisDependency.LEFT);
+        set5.setColor(ch5_color);
+        set5.setDrawCircles(false);
+        set5.setLineWidth(1f);
+        set5.setValueTextColor(ch5_color);
+        set5.setVisible(show);
+        return set5;
+    }
+
+    private LineDataSet createSet6(ArrayList<Entry> le, boolean show) {
+        LineDataSet set6 = new LineDataSet(le, "Ch-6");
+        set6.setAxisDependency(YAxis.AxisDependency.LEFT);
+        set6.setColor(ch6_color);
+        set6.setDrawCircles(false);
+        set6.setLineWidth(1f);
+        set6.setValueTextColor(ch6_color);
+        set6.setVisible(show);
+        return set6;
+    }
+
+    private LineDataSet createSet7(ArrayList<Entry> le, boolean show) {
+        LineDataSet set7 = new LineDataSet(le, "Ch-7");
+        set7.setAxisDependency(YAxis.AxisDependency.LEFT);
+        set7.setColor(ch7_color);
+        set7.setDrawCircles(false);
+        set7.setLineWidth(1f);
+        set7.setValueTextColor(ch7_color);
+        set7.setVisible(show);
+        return set7;
+    }
+
+    private LineDataSet createSet8(ArrayList<Entry> le, boolean show) {
+        LineDataSet set8 = new LineDataSet(le, "Ch-8");
+        set8.setAxisDependency(YAxis.AxisDependency.LEFT);
+        set8.setColor(ch8_color);
+        set8.setDrawCircles(false);
+        set8.setLineWidth(1f);
+        set8.setValueTextColor(ch8_color);
+        set8.setVisible(show);
+        return set8;
+    }
+
+    private void addEntries(final List<List<Float>> e_list) {
+        final List<ILineDataSet> datasets = new ArrayList<>();  // for adding multiple plots
+        float x = 0;
+        for (List<Float> f : e_list) {
+            cnt++;
+            x = cnt * DATAPOINT_TIME;
+            lineEntries1.add(new Entry(x, f.get(0)));
+            lineEntries2.add(new Entry(x, f.get(1)));
+            lineEntries3.add(new Entry(x, f.get(2)));
+            lineEntries4.add(new Entry(x, f.get(3)));
+            lineEntries5.add(new Entry(x, f.get(4)));
+            lineEntries6.add(new Entry(x, f.get(5)));
+            lineEntries7.add(new Entry(x, f.get(6)));
+            lineEntries8.add(new Entry(x, f.get(7)));
+        }
+        final float f_x = x;
+        if (thread != null) thread.interrupt();
+        final Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                LineDataSet set1 = createSet1(lineEntries1, show_ch1);
+                datasets.add(set1);
+                LineDataSet set2 = createSet2(lineEntries2, show_ch2);
+                datasets.add(set2);
+                LineDataSet set3 = createSet3(lineEntries3, show_ch3);
+                datasets.add(set3);
+                LineDataSet set4 = createSet4(lineEntries4, show_ch4);
+                datasets.add(set4);
+                LineDataSet set5 = createSet5(lineEntries5, show_ch5);
+                datasets.add(set5);
+                LineDataSet set6 = createSet6(lineEntries6, show_ch6);
+                datasets.add(set6);
+                LineDataSet set7 = createSet7(lineEntries7, show_ch7);
+                datasets.add(set7);
+                LineDataSet set8 = createSet8(lineEntries8, show_ch8);
+                datasets.add(set8);
+                LineData linedata = new LineData(datasets);
+                linedata.notifyDataChanged();
+                mChart.setData(linedata);
+                mChart.notifyDataSetChanged();
+                // limit the number of visible entries
+                mChart.setVisibleXRangeMaximum(MAX_VISIBLE);
+                // move to the latest entry
+                mChart.moveViewToX(f_x);
+            }
+        };
+        thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                runOnUiThread(runnable);
+            }
+        });
+        thread.start();
+        if (x > PLOT_MEMO) {
+            for (int j = 0; j < e_list.size(); j++) {
+                for (int i = 0; i < mChart.getData().getDataSetCount(); i++) {
+                    mChart.getData().getDataSetByIndex(i).removeFirst();
+                }
+            }
+        }
+    }
+
+    @SuppressLint({"SimpleDateFormat", "SetTextI18n"})
+    private void startTrial() {
+        cnt = 0;
+        main_data = new ArrayList<>();
+        start_time = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
+        start_timestamp = new Timestamp(start_watch).getTime();
+        recording = true;
+        toggleExperimentControls(false);
+        btn_record.setText("Stop and Store Data");
+    }
+
+    private void askForLabel() {
+        new MaterialDialog.Builder(this)
+                .title("Please, enter the session label")
+                .inputType(InputType.TYPE_CLASS_TEXT)
+                .input("E.g. walking, eating, sleeping, etc.",
+                        "", new MaterialDialog.InputCallback() {
+                            @Override
+                            public void onInput(@NonNull MaterialDialog dialog, CharSequence input) {
+                                session_label = input.toString();
+                                // Use a new tread as this can take a while
+                                // onResume we start our timer so it can start when the app comes from the background
+                                startTrial();
+                                startTimer();
+                            }
+                        }).show();
+    }
+
+    private void showExperimentSettings() {
+        String stimuli_text = "- Stimuli selected: ";
+        int time;
+        if (repeat_stimulus) {
+            time = (STIMULUS_START + NKEYS * MAXOCTAVE * PERIOD) / 1000;
+            selected = spinner_key.getSelectedItem().toString() + MINOCTAVE;
+        } else {
+            time = (STIMULUS_START + NKEYS * (MAXOCTAVE + 1 - MINOCTAVE) * PERIOD) / 1000;
+            selected = "C" + spinner_min_o.getSelectedItem().toString() + "-" + "B" + spinner_max_o.getSelectedItem().toString();
+        }
+        String time_text = "- Time: " + time;
+        Toast.makeText(
+                getApplicationContext(),
+                "EXPERIMENT SETTINGS:\n" + stimuli_text + selected + "\n" + time_text + "s",
+                Toast.LENGTH_LONG
+        ).show();
+
+    }
+
+    private List<ImmutablePair<Integer, Integer>> generateKeys() {
+        List<ImmutablePair<Integer, Integer>> new_keys = new ArrayList<>();
+        int min = MINOCTAVE;
+        int max = MAXOCTAVE;
+        if (repeat_stimulus) {
+            min = 1;
+            max = MAXOCTAVE;
+        }
+        for (int o = min; o <= max; o++) {
+            for (int k = 0; k < NKEYS; k++) {
+                ImmutablePair<Integer, Integer> pair;
+                if (!repeat_stimulus)
+                    pair = new ImmutablePair<>(k, o);
+                else
+                    pair = new ImmutablePair<>(selected_key, MINOCTAVE);
+                new_keys.add(pair);
+            }
+        }
+        // randomize list
+        Collections.shuffle(new_keys);
+        return new_keys;
+    }
+
+    private List<ImmutablePair<String, Double>> keysToNotes(List<ImmutablePair<Integer, Integer>> keysList) {
+        char letter = ' ';
+        char accidental;
+        String note;
+        List<ImmutablePair<String, Double>> notesFreqs = new ArrayList<>();
+        for (ImmutablePair<Integer, Integer> pair : keysList) {
+            int key = pair.getKey();  // e.g note from 0 to 11
+            int octave = pair.getValue(); // e.g octave from 2 to 5
+            accidental = ' ';
+            switch (key) {
+                case 0:
+                    letter = 'C';
+                    break;
+                case 1:
+                    letter = 'C';
+                    accidental = '#';
+                    break;
+                case 2:
+                    letter = 'D';
+                    break;
+                case 3:
+                    letter = 'D';
+                    accidental = '#';
+                    break;
+                case 4:
+                    letter = 'E';
+                    break;
+                case 5:
+                    letter = 'F';
+                    break;
+                case 6:
+                    letter = 'F';
+                    accidental = '#';
+                    break;
+                case 7:
+                    letter = 'G';
+                    break;
+                case 8:
+                    letter = 'G';
+                    accidental = '#';
+                    break;
+                case 9:
+                    letter = 'A';
+                    break;
+                case 10:
+                    letter = 'A';
+                    accidental = '#';
+                    break;
+                case 11:
+                    letter = 'B';
+                    break;
+            }
+            if (accidental != ' ') note = letter + "" + accidental + "" + octave;  // e.g. C#5
+            else note = letter + "" + octave; // e.g. C5
+            NoteToFrequency mNotetoFreq = new NoteToFrequency(letter, accidental, octave, TUNING);
+            double frequency = mNotetoFreq.frequency;
+            ImmutablePair<String, Double> noteFreqPair = new ImmutablePair<>(note, frequency);
+            notesFreqs.add(noteFreqPair);
+        }
+        return notesFreqs;
+    }
+
+    private void startTimer() {
+        //set a new Timer
+        timer = new Timer();
+        //initialize the TimerTask's job
+        initializeTimerTask();
+        // schedule the timer, the stimulus presence will repeat every 3 seconds
+        timer.schedule(timerTask, STIMULUS_START, PERIOD);
+        // the silence (stop MediaPlayer) starts after 5.5 seconds, repeat every 3 seconds
+        // done this way to avoid "click" sounds at the end of the presentation
+        timer.schedule(timerTask2, SILENCE_START, PERIOD);
+    }
+
+    private void initializeTimerTask() {
+        final AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        timerTask = new TimerTask() {
+            public void run() {
+                handler.post(new Runnable() {
+                    public void run() {
+                        if (!notes.isEmpty()) {
+                            mMediaPlayer = new MediaPlayer();
+                            ImmutablePair<String, Double> note = notes.get(0);
+                            key = note.getKey();  // same as .getLeft()
+                            freq = note.getValue();
+                            String solfa = "";
+                            switch (key.charAt(0)) {
+                                case 'A':
+                                    solfa = "La";
+                                    break;
+                                case 'B':
+                                    solfa = "Si";
+                                    break;
+                                case 'C':
+                                    solfa = "Do";
+                                    break;
+                                case 'D':
+                                    solfa = "Re";
+                                    break;
+                                case 'E':
+                                    solfa = "Mi";
+                                    break;
+                                case 'F':
+                                    solfa = "Fa";
+                                    break;
+                                case 'G':
+                                    solfa = "Sol";
+                                    break;
+                            }
+                            try {
+                                mMediaPlayer.setDataSource(TONES_PATH + key + ".wav");
+                                mMediaPlayer.prepare();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            float s_appearance = System.currentTimeMillis() - start_watch;
+                            s_times.add(s_appearance);
+                            String key_n_freq = key + " = " + freq + "Hz";
+                            XAxis bottom = mChart.getXAxis();
+                            LimitLine ll_start = new LimitLine(s_appearance, key_n_freq);
+                            float silence_pos = s_appearance + STIMULUS_LENGTH;
+                            LimitLine ll_stop = new LimitLine(silence_pos, "Silence");
+                            ll_start.setLineColor(Color.GREEN);
+                            ll_start.setTextColor(Color.GREEN);
+                            ll_stop.setLineColor(Color.RED);
+                            ll_stop.setTextColor(Color.RED);
+                            bottom.addLimitLine(ll_start);
+                            bottom.addLimitLine(ll_stop);
+                            mChart.notifyDataSetChanged();
+                            mMediaPlayer.start();
+                            // This shows -Infinity (0 volume) -> -53.th up to 0dB)
+                            // TODO: Get the actual dB SPL
+                            int streamVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                            if (Build.VERSION.SDK_INT >= 28)
+                                volume_level = audioManager.getStreamVolumeDb(AudioManager.STREAM_MUSIC, streamVolume, AudioDeviceInfo.TYPE_WIRED_HEADPHONES);
+                            else volume_level = (float) streamVolume;
+                            playing = true;
+                            initializeTimerTask2();
+                            timer2 = new Timer();
+                            timer2.schedule(timerTask3, STIMULUS_LENGTH);  // run only once
+                            notes.remove(0);
+                            Toast.makeText(
+                                    getApplicationContext(),
+                                    solfa + "/" + key_n_freq,
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        } else {
+                            timer.cancel();
+                            endTrial();
+                        }
+                    }
+                });
+            }
+        };
+        timerTask2 = new TimerTask() {
+            public void run() {
+                handler.post(new Runnable() {
+                    public void run() {
+                        mMediaPlayer.release();
+                        mMediaPlayer = null;
+                    }
+                });
+            }
+        };
+    }
+
+    private void initializeTimerTask2() {
+        timerTask3 = new TimerTask() {
+            public void run() {
+                handler.post(new Runnable() {
+                    public void run() {
+                        playing = false;
+                        timer2.cancel();
+                        timer2.purge();
+                    }
+                });
+            }
+        };
+    }
+
+    @SuppressLint("SimpleDateFormat")
+    private void endTrial() {
+        timer.cancel();
+        recording = false;
+        end_time = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
+        long stop_watch = System.currentTimeMillis();
+        end_timestamp = new Timestamp(stop_watch).getTime();
+        recording_time = Long.toString(stop_watch - start_watch);
+        btn_record.setText(R.string.save_label);
+        if (session_label == null) saveSession();
+        else saveSession(session_label);
+        session_label = null;
+        Toast.makeText(
+                getApplicationContext(),
+                "Your EEG session was successfully stored",
+                Toast.LENGTH_LONG
+        ).show();
+        toggleExperimentControls(true);
+        btn_record.setText(R.string.record_label);
+    }
+
+    private void storeData(List<Float> data_microV) {
+        if (dp_received.size() == 0) start_watch = System.currentTimeMillis();
+        float[] f_microV = new float[data_microV.size()];
+        float curr_received = System.currentTimeMillis() - start_watch;
+        dp_received.add(curr_received);
+        int i = 0;
+        for (Float f : data_microV)
+            f_microV[i++] = (f != null ? f : Float.NaN); // Or whatever default you want
+        main_data.add(f_microV);
+        ImmutablePair<String, Double> stimuli = new ImmutablePair<>(key, freq);
+        if (!playing) stimuli = new ImmutablePair<>("silence", 0.0);
+        stimuli_data.add(stimuli);
+    }
+
+    private void saveSession() {
+        saveSession("Default");
+    }
+
+    private void saveSession(final String tag) {
+        final String top_header = "Session ID,Session Tag,Date,Stimuli,Presentations,Volume,Shape (rows x columns)," +
+                "Duration (ms),Starting Time,Ending Time,Resolution (ms),Resolution (Hz)," +
+                "Unit Measure,Starting Timestamp,Ending Timestamp";
+        final String dp_header = "Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8,Key,Freq";
+        final UUID id = UUID.randomUUID();
+        @SuppressLint("SimpleDateFormat") final String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
+        final char delimiter = ',';
+        final char break_line = '\n';
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    File formatted = new File(Environment.getExternalStoragePublicDirectory(
+                            Environment.DIRECTORY_DOWNLOADS),
+                            date + ".csv");
+                    // if file doesn't exists, then create it
+                    if (!formatted.exists()) //noinspection ResultOfMethodCallIgnored
+                        formatted.createNewFile();
+                    FileWriter fileWriter = new FileWriter(formatted);
+                    int rows = main_data.size();
+                    int cols = main_data.get(0).length;
+                    fileWriter.append(top_header);
+                    fileWriter.append(break_line);
+                    fileWriter.append(id.toString());
+                    fileWriter.append(delimiter);
+                    fileWriter.append(tag);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(date);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(selected);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(String.valueOf(nPresentations));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(String.valueOf(volume_level));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(String.valueOf(rows)).append("x").append(String.valueOf(cols));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(recording_time);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(start_time);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(end_time);
+                    fileWriter.append(delimiter);
+                    fileWriter.append(String.valueOf(res_time));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(String.valueOf(res_freq));
+                    fileWriter.append(delimiter);
+                    fileWriter.append("µV");
+                    fileWriter.append(delimiter);
+                    fileWriter.append(Long.toString(start_timestamp));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(Long.toString(end_timestamp));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(break_line);
+                    fileWriter.append("Stimuli appearance");
+                    fileWriter.append(delimiter);
+                    for (float time : s_times) {
+                        fileWriter.append(String.valueOf(time));
+                        fileWriter.append(delimiter);
+                    }
+                    fileWriter.append(break_line);
+                    fileWriter.append(dp_header);
+                    fileWriter.append(break_line);
+                    for (int i = 0; i < rows; i++) {
+                        fileWriter.append(String.valueOf(dp_received.get(i)));
+                        fileWriter.append(delimiter);
+                        for (int j = 0; j < cols; j++) {
+                            fileWriter.append(String.valueOf(main_data.get(i)[j]));
+                            fileWriter.append(delimiter);
+                        }
+                        fileWriter.append(stimuli_data.get(i).getLeft());
+                        fileWriter.append(delimiter);
+                        fileWriter.append(stimuli_data.get(i).getRight().toString());
+                        fileWriter.append(delimiter);
+                        fileWriter.append(break_line);
+                    }
+                    fileWriter.flush();
+                    fileWriter.close();
+                } catch (Exception e) {
+                    Log.e(TAG, "Error storing the data into a CSV file: " + e);
+                }
+            }
+        }).start();
     }
 }

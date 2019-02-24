@@ -120,7 +120,6 @@ public class DeviceScanActivity extends ListActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-//        getActionBar().setTitle(R.string.app_name);
         mHandler = new Handler();
         // Use this check to determine whether BLE is supported on the device.  Then you can
         // selectively disable BLE-related features.
@@ -183,7 +182,7 @@ public class DeviceScanActivity extends ListActivity {
             if (Build.VERSION.SDK_INT >= 21) {
                 mLEScanner = mBluetoothAdapter.getBluetoothLeScanner();
                 settings = new ScanSettings.Builder()
-                        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                        .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
                         .build();
                 filters = new ArrayList<>();
             }
@@ -350,6 +349,7 @@ public class DeviceScanActivity extends ListActivity {
                 Log.d(TAG, "addDevice: Found a Traumschreiber with ID " + device.getAddress());
                 if (!mLeDevices.contains(device)) {
                     mLeDevices.add(device);
+                    scanLeDevice(false);
                 }
             } else {
                 Log.d(TAG, "addDevice: Found a device which is not a Traumschreiber with ID " + device.getAddress());
