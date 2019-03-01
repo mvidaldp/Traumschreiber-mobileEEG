@@ -189,7 +189,7 @@ public class DeviceControlActivity extends Activity {
     private Spinner spinner_max_o;
     private String selected;
     private float volume_level;
-    private int nPresentations;
+    private int nPresentations = 0;
     private boolean mConnected = false;
     private BluetoothGattCharacteristic mNotifyCharacteristic;
     private LineChart mChart;
@@ -218,7 +218,6 @@ public class DeviceControlActivity extends Activity {
                 s_times.clear();
                 keys.addAll(generateKeys());
                 notes.addAll(keysToNotes(keys));
-                nPresentations = notes.size();
                 askForLabel();
             } else endTrial();
         }
@@ -1130,18 +1129,22 @@ public class DeviceControlActivity extends Activity {
 
     private void showExperimentSettings() {
         String stimuli_text = "- Stimuli selected: ";
+        String presentations_text = "- Nº of presentations: ";
         int time;
         if (repeat_stimulus) {
-            time = (STIMULUS_START + NKEYS * MAXOCTAVE * PERIOD) / 1000;
+            nPresentations = NKEYS * MAXOCTAVE;
+            time = (STIMULUS_START + nPresentations * PERIOD) / 1000;
             selected = spinner_key.getSelectedItem().toString() + MINOCTAVE;
+
         } else {
-            time = (STIMULUS_START + NKEYS * (MAXOCTAVE + 1 - MINOCTAVE) * PERIOD) / 1000;
+            nPresentations = NKEYS * (MAXOCTAVE + 1 - MINOCTAVE);
+            time = (STIMULUS_START + nPresentations * PERIOD) / 1000;
             selected = "C" + spinner_min_o.getSelectedItem().toString() + "-" + "B" + spinner_max_o.getSelectedItem().toString();
         }
         String time_text = "- Time: " + time;
         Toast.makeText(
                 getApplicationContext(),
-                "EXPERIMENT SETTINGS:\n" + stimuli_text + selected + "\n" + time_text + "s",
+                "EXPERIMENT SETTINGS:\n" + stimuli_text + selected + "\n" + presentations_text + nPresentations + "\n" + time_text + "s",
                 Toast.LENGTH_LONG
         ).show();
 
@@ -1386,7 +1389,7 @@ public class DeviceControlActivity extends Activity {
     }
 
     private void saveSession() {
-        saveSession("Default");
+        saveSession("default");
     }
 
     private void saveSession(final String tag) {
@@ -1404,7 +1407,7 @@ public class DeviceControlActivity extends Activity {
                 try {
                     File formatted = new File(Environment.getExternalStoragePublicDirectory(
                             Environment.DIRECTORY_DOWNLOADS),
-                            date + ".csv");
+                            date + "_" + selected + "_" + tag + ".csv");
                     // if file doesn't exists, then create it
                     if (!formatted.exists()) //noinspection ResultOfMethodCallIgnored
                         formatted.createNewFile();
