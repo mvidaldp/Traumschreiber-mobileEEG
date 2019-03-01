@@ -963,7 +963,7 @@ public class DeviceControlActivity extends Activity {
     }
 
     private void saveSession() {
-        saveSession("Default");
+        saveSession("default");
     }
 
     private void saveSession(final String tag) {
@@ -981,7 +981,7 @@ public class DeviceControlActivity extends Activity {
                 try {
                     File formatted = new File(Environment.getExternalStoragePublicDirectory(
                             Environment.DIRECTORY_DOWNLOADS),
-                            date + ".csv");
+                            date + "_" + tag + ".csv");
                     // if file doesn't exists, then create it
                     if (!formatted.exists()) //noinspection ResultOfMethodCallIgnored
                         formatted.createNewFile();
