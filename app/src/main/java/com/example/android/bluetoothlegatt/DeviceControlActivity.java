@@ -213,6 +213,7 @@ public class DeviceControlActivity extends Activity {
         @Override
         public void onClick(View v) {
             if (!recording) {
+                dp_received.clear();
                 notes.clear();
                 keys.clear();
                 s_times.clear();
@@ -826,6 +827,7 @@ public class DeviceControlActivity extends Activity {
         mCh8.setText("");
         mDataResolution.setText(R.string.no_data);
         data_cnt = 0;
+        cnt = 0;
         start_data = 0;
     }
 
