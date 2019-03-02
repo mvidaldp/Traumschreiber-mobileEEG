@@ -5,7 +5,7 @@
 ![Plotting](https://raw.githubusercontent.com/mvidaldp/Traumschreiber-mobileEEG/master/screenshots/plot.gif)
 - Device site: https://www.traumschreiber.uni-osnabrueck.de/
 - Original Python code for the device: https://github.com/pnieters/tflow_edge/
-- [Download the App](https://github.com/mvidaldp/Traumschreiber-mobileEEG/raw/master/app/build/outputs/apk/debug/app-debug.apk)
+- [Download the App](https://github.com/mvidaldp/Traumschreiber-mobileEEG/blob/aep-experiment/app/build/outputs/apk/debug/app-debug.apk)
 
 ## Screenshots
 ### Device search activity
