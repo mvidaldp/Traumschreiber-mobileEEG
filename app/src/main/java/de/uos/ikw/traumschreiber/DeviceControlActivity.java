@@ -7,7 +7,6 @@ import android.bluetooth.BluetoothGattService;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
@@ -90,13 +89,8 @@ public class DeviceControlActivity extends Activity {
                 Log.e(TAG, "Unable to initialize Bluetooth");
                 finish();
             }
-            // hack for ensuring a successful connection
-            handler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    mBluetoothLeService.connect(mDeviceAddress);
-                }
-            }, CONNECT_DELAY);  // connect with a defined delay
+            // hack for ensuring a successful connection (with a defined delay)
+            handler.postDelayed(() -> mBluetoothLeService.connect(mDeviceAddress), CONNECT_DELAY);
         }
 
         // Automatically connects to the device upon successful start-up initialization.
@@ -167,12 +161,9 @@ public class DeviceControlActivity extends Activity {
     private String session_label;
     private long start_timestamp;
     private long end_timestamp;
-    private final View.OnClickListener btnRecordOnClickListener = new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            if (!recording) askForLabel();
-            else endTrial();
-        }
+    private final View.OnClickListener btnRecordOnClickListener = v -> {
+        if (!recording) askForLabel();
+        else endTrial();
     };
     private String selected_gain;
     private Thread thread;
@@ -622,7 +613,6 @@ public class DeviceControlActivity extends Activity {
                         mBluetoothLeService.setCharacteristicNotification(
                                 gattCharacteristic, true);
                     }
-                    mBluetoothLeService.disconnect();
                     mBluetoothLeService.connect(mDeviceAddress);
                 }
             }
@@ -917,42 +907,22 @@ public class DeviceControlActivity extends Activity {
     }
 
     private void askForLabel() {
-//        LayoutInflater layoutInflaterAndroid = LayoutInflater.from(getApplicationContext());
-//        View mView = layoutInflaterAndroid.inflate(R.layout.input_dialog_string, null);
-//        AlertDialog.Builder alertDialogBuilderUserInput = new AlertDialog.Builder(Record.this);
-//        alertDialogBuilderUserInput.setView(mView);
+        // set the custom layout
+        final View inputLayout = getLayoutInflater().inflate(R.layout.prompt, null);
 
-        // Set an EditText view to get user input
-        final EditText input = new EditText(this);
+        // set an EditText view to get user input
+        final EditText inputText = inputLayout.findViewById(R.id.editText);
 
-        new AlertDialog.Builder(getApplicationContext())
-                .setCancelable(false)
-                .setTitle("Please, enter the session label")
-                .setMessage("E.g. walking, eating, sleeping, etc.")
-                .setView(input)
-                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialogBox, int id) {
-                        session_label = input.toString();
-                        startTrial();
-                    }
-                }).show();
-
-//        AlertDialog alertDialogAndroid = alertDialogBuilderUserInput.create();
-//        alertDialogAndroid.show();
-//        buttons_prerecording();
-//        new MaterialDialog.Builder(this)
-//                .title("Please, enter the session label")
-//                .inputType(InputType.TYPE_CLASS_TEXT)
-//                .input("E.g. walking, eating, sleeping, etc.",
-//                        "", new MaterialDialog.InputCallback() {
-//                            @Override
-//                            public void onInput(@NonNull MaterialDialog dialog, CharSequence input) {
-//                                session_label = input.toString();
-//                                // Use a new tread as this can take a while
-//                                // onResume we start our timer so it can start when the app comes from the background
-//                                startTrial();
-//                            }
-//                        }).show();
+        // create an alert builder
+        new AlertDialog.Builder(this, R.style.prompt)
+            .setView(inputLayout)
+            .setCancelable(false)
+            .setTitle("Please, enter the session label")
+            .setMessage("E.g. walking, eating, sleeping, etc.")
+            .setPositiveButton("Save", (dialog, id) -> {
+                session_label = inputText.getText().toString();
+                startTrial();
+            }).create().show();
     }
 
     @SuppressLint("SimpleDateFormat")
