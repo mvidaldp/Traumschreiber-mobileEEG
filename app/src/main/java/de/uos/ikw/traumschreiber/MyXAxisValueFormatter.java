@@ -1,11 +1,10 @@
-package com.example.android.bluetoothlegatt;
+package de.uos.ikw.traumschreiber;
 
-import com.github.mikephil.charting.components.AxisBase;
-import com.github.mikephil.charting.formatter.IAxisValueFormatter;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 
 import java.text.DecimalFormat;
 
-public class MyXAxisValueFormatter implements IAxisValueFormatter {
+public class MyXAxisValueFormatter extends ValueFormatter {
     private DecimalFormat mFormat;
 
     public MyXAxisValueFormatter() {
@@ -14,7 +13,7 @@ public class MyXAxisValueFormatter implements IAxisValueFormatter {
     }
 
     @Override
-    public String getFormattedValue(float value, AxisBase axis) {
+    public String getFormattedValue(float value) {
         // "value" represents the position of the label on the axis (x or y)
         return mFormat.format(value / 1000);  //
     }

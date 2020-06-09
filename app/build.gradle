@@ -9,10 +9,10 @@ List<String> dirs = [
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 28
+    compileSdkVersion 29
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 28
+        targetSdkVersion 29
         multiDexEnabled true
     }
 
@@ -39,17 +39,20 @@ android {
         androidTest.setRoot('tests')
         androidTest.java.srcDirs = ['tests/src']
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 
 }
 
 dependencies {
-    implementation 'androidx.recyclerview:recyclerview:1.1.0-alpha02'
+    implementation 'androidx.recyclerview:recyclerview:1.2.0-alpha03'
     implementation 'androidx.legacy:legacy-support-v13:1.0.0'
     implementation 'androidx.cardview:cardview:1.0.0'
-    implementation 'androidx.appcompat:appcompat:1.1.0-alpha02'
-    implementation 'org.apache.commons:commons-lang3:3.8.1'
-    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0-alpha'
-    implementation 'com.afollestad.material-dialogs:core:0.9.6.0'
+    implementation 'androidx.appcompat:appcompat:1.3.0-alpha01'
+    implementation 'org.apache.commons:commons-lang3:3.10'
+    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
 }
 
 

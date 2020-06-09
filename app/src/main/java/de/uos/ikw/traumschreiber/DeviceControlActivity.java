@@ -1,4 +1,4 @@
-package com.example.android.bluetoothlegatt;
+package de.uos.ikw.traumschreiber;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothGattService;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
@@ -15,7 +16,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
-import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -25,12 +25,12 @@ import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.afollestad.materialdialogs.MaterialDialog;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
@@ -51,8 +51,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 
 /**
@@ -917,19 +917,42 @@ public class DeviceControlActivity extends Activity {
     }
 
     private void askForLabel() {
-        new MaterialDialog.Builder(this)
-                .title("Please, enter the session label")
-                .inputType(InputType.TYPE_CLASS_TEXT)
-                .input("E.g. walking, eating, sleeping, etc.",
-                        "", new MaterialDialog.InputCallback() {
-                            @Override
-                            public void onInput(@NonNull MaterialDialog dialog, CharSequence input) {
-                                session_label = input.toString();
-                                // Use a new tread as this can take a while
-                                // onResume we start our timer so it can start when the app comes from the background
-                                startTrial();
-                            }
-                        }).show();
+//        LayoutInflater layoutInflaterAndroid = LayoutInflater.from(getApplicationContext());
+//        View mView = layoutInflaterAndroid.inflate(R.layout.input_dialog_string, null);
+//        AlertDialog.Builder alertDialogBuilderUserInput = new AlertDialog.Builder(Record.this);
+//        alertDialogBuilderUserInput.setView(mView);
+
+        // Set an EditText view to get user input
+        final EditText input = new EditText(this);
+
+        new AlertDialog.Builder(getApplicationContext())
+                .setCancelable(false)
+                .setTitle("Please, enter the session label")
+                .setMessage("E.g. walking, eating, sleeping, etc.")
+                .setView(input)
+                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialogBox, int id) {
+                        session_label = input.toString();
+                        startTrial();
+                    }
+                }).show();
+
+//        AlertDialog alertDialogAndroid = alertDialogBuilderUserInput.create();
+//        alertDialogAndroid.show();
+//        buttons_prerecording();
+//        new MaterialDialog.Builder(this)
+//                .title("Please, enter the session label")
+//                .inputType(InputType.TYPE_CLASS_TEXT)
+//                .input("E.g. walking, eating, sleeping, etc.",
+//                        "", new MaterialDialog.InputCallback() {
+//                            @Override
+//                            public void onInput(@NonNull MaterialDialog dialog, CharSequence input) {
+//                                session_label = input.toString();
+//                                // Use a new tread as this can take a while
+//                                // onResume we start our timer so it can start when the app comes from the background
+//                                startTrial();
+//                            }
+//                        }).show();
     }
 
     @SuppressLint("SimpleDateFormat")
@@ -979,8 +1002,7 @@ public class DeviceControlActivity extends Activity {
             @Override
             public void run() {
                 try {
-                    File formatted = new File(Environment.getExternalStoragePublicDirectory(
-                            Environment.DIRECTORY_DOWNLOADS),
+                    File formatted = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath(),
                             date + "_" + tag + ".csv");
                     // if file doesn't exists, then create it
                     if (!formatted.exists()) //noinspection ResultOfMethodCallIgnored

@@ -1,4 +1,4 @@
-package com.example.android.bluetoothlegatt;
+package de.uos.ikw.traumschreiber;
 
 import android.Manifest;
 import android.app.Activity;
@@ -47,6 +47,8 @@ public class DeviceScanActivity extends ListActivity {
     private static final int REQUEST_BLUETOOTH = 1;
     private static final int REQUEST_BLUETOOTH_ADMIN = 1;
     private static final int REQUEST_ACCESS_COARSE_LOCATION = 1;
+    private static final int REQUEST_ACCESS_FINE_LOCATION = 1;
+    private static final int REQUEST_ACCESS_BACKGROUND_LOCATION = 1;
     private static final int REQUEST_READ_EXTERNAL_STORAGE = 1;
     private static final int REQUEST_WRITE_EXTERNAL_STORAGE = 1;
     // Stops scanning after 10 seconds.
@@ -244,6 +246,28 @@ public class DeviceScanActivity extends ListActivity {
                 ActivityCompat.requestPermissions(DeviceScanActivity.this,
                         new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
                         REQUEST_ACCESS_COARSE_LOCATION);
+            }
+        }
+        if (ContextCompat.checkSelfPermission(DeviceScanActivity.this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(DeviceScanActivity.this,
+                    Manifest.permission.ACCESS_FINE_LOCATION)) {
+            } else {
+                ActivityCompat.requestPermissions(DeviceScanActivity.this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                        REQUEST_ACCESS_FINE_LOCATION);
+            }
+        }
+        if (ContextCompat.checkSelfPermission(DeviceScanActivity.this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(DeviceScanActivity.this,
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
+            } else {
+                ActivityCompat.requestPermissions(DeviceScanActivity.this,
+                        new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION},
+                        REQUEST_ACCESS_BACKGROUND_LOCATION);
             }
         }
         if (ContextCompat.checkSelfPermission(DeviceScanActivity.this,

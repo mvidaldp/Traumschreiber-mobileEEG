@@ -1,4 +1,4 @@
-package com.example.android.bluetoothlegatt;
+package de.uos.ikw.traumschreiber;
 
 import android.util.Log;
 

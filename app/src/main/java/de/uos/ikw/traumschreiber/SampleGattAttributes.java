@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.bluetoothlegatt;
+package de.uos.ikw.traumschreiber;
 
 import java.util.HashMap;
 
