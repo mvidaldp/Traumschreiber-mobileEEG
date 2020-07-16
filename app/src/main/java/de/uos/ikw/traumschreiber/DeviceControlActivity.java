@@ -48,6 +48,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import androidx.annotation.Nullable;
@@ -968,61 +969,58 @@ public class DeviceControlActivity extends Activity {
         @SuppressLint("SimpleDateFormat") final String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
         final char delimiter = ',';
         final char break_line = '\n';
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    File formatted = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath(),
-                            date + "_" + tag + ".csv");
-                    // if file doesn't exists, then create it
-                    if (!formatted.exists()) //noinspection ResultOfMethodCallIgnored
-                        formatted.createNewFile();
-                    FileWriter fileWriter = new FileWriter(formatted);
-                    int rows = main_data.size();
-                    int cols = main_data.get(0).length;
-                    fileWriter.append(top_header);
-                    fileWriter.append(break_line);
-                    fileWriter.append(id.toString());
+        new Thread(() -> {
+            try {
+                File formatted = new File(Objects.requireNonNull(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)).getAbsolutePath(),
+                        date + "_" + tag + ".csv");
+                // if file doesn't exists, then create it
+                if (!formatted.exists()) //noinspection ResultOfMethodCallIgnored
+                    formatted.createNewFile();
+                FileWriter fileWriter = new FileWriter(formatted);
+                int rows = main_data.size();
+                int cols = main_data.get(0).length;
+                fileWriter.append(top_header);
+                fileWriter.append(break_line);
+                fileWriter.append(id.toString());
+                fileWriter.append(delimiter);
+                fileWriter.append(tag);
+                fileWriter.append(delimiter);
+                fileWriter.append(date);
+                fileWriter.append(delimiter);
+                fileWriter.append(String.valueOf(rows)).append("x").append(String.valueOf(cols));
+                fileWriter.append(delimiter);
+                fileWriter.append(recording_time);
+                fileWriter.append(delimiter);
+                fileWriter.append(start_time);
+                fileWriter.append(delimiter);
+                fileWriter.append(end_time);
+                fileWriter.append(delimiter);
+                fileWriter.append(String.valueOf(res_time));
+                fileWriter.append(delimiter);
+                fileWriter.append(String.valueOf(res_freq));
+                fileWriter.append(delimiter);
+                fileWriter.append("µV");
+                fileWriter.append(delimiter);
+                fileWriter.append(Long.toString(start_timestamp));
+                fileWriter.append(delimiter);
+                fileWriter.append(Long.toString(end_timestamp));
+                fileWriter.append(delimiter);
+                fileWriter.append(break_line);
+                fileWriter.append(dp_header);
+                fileWriter.append(break_line);
+                for (int i = 0; i < rows; i++) {
+                    fileWriter.append(String.valueOf(dp_received.get(i)));
                     fileWriter.append(delimiter);
-                    fileWriter.append(tag);
-                    fileWriter.append(delimiter);
-                    fileWriter.append(date);
-                    fileWriter.append(delimiter);
-                    fileWriter.append(String.valueOf(rows)).append("x").append(String.valueOf(cols));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(recording_time);
-                    fileWriter.append(delimiter);
-                    fileWriter.append(start_time);
-                    fileWriter.append(delimiter);
-                    fileWriter.append(end_time);
-                    fileWriter.append(delimiter);
-                    fileWriter.append(String.valueOf(res_time));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(String.valueOf(res_freq));
-                    fileWriter.append(delimiter);
-                    fileWriter.append("µV");
-                    fileWriter.append(delimiter);
-                    fileWriter.append(Long.toString(start_timestamp));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(Long.toString(end_timestamp));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(break_line);
-                    fileWriter.append(dp_header);
-                    fileWriter.append(break_line);
-                    for (int i = 0; i < rows; i++) {
-                        fileWriter.append(String.valueOf(dp_received.get(i)));
+                    for (int j = 0; j < cols; j++) {
+                        fileWriter.append(String.valueOf(main_data.get(i)[j]));
                         fileWriter.append(delimiter);
-                        for (int j = 0; j < cols; j++) {
-                            fileWriter.append(String.valueOf(main_data.get(i)[j]));
-                            fileWriter.append(delimiter);
-                        }
-                        fileWriter.append(break_line);
                     }
-                    fileWriter.flush();
-                    fileWriter.close();
-                } catch (Exception e) {
-                    Log.e(TAG, "Error storing the data into a CSV file: " + e);
+                    fileWriter.append(break_line);
                 }
+                fileWriter.flush();
+                fileWriter.close();
+            } catch (Exception e) {
+                Log.e(TAG, "Error storing the data into a CSV file: " + e);
             }
         }).start();
     }
